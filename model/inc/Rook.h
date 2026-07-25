@@ -13,11 +13,11 @@ private:
 
 public:
 	Rook(PieceType type, PieceColor color, int row, int column): Piece(type, color, row, column) {
-		movements = '\0';
+		movements = nullptr;
 	}
 
 	~Rook(){
-		if (movements != NULL)
+		if (movements != nullptr)
 			delete movements;
 		//std::cout<<"Rook destructor.."<<std::endl;
 	}

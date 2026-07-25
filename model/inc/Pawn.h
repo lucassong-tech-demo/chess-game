@@ -12,11 +12,11 @@ private:
 
 public:
 	Pawn(PieceType type, PieceColor color, int row, int column): Piece(type, color, row, column){
-		movements = '\0';
+		movements = nullptr;
 	}
 
 	~Pawn(){
-		if (movements != NULL)
+		if (movements != nullptr)
 			delete movements;	
 		//std::cout<<"Pawn destructor.."<<std::endl;
 	}

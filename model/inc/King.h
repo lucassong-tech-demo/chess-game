@@ -14,11 +14,11 @@ private:
 
 public:
 	King(PieceType type, PieceColor color, int row, int column): Piece(type, color, row, column){
-		movements = '\0';
+		movements = nullptr;
 	}
 
 	~King(){
-		if (movements != NULL)
+		if (movements != nullptr)
 			delete movements;
 		//std::cout<<"King destructor.."<<std::endl;
 	}

@@ -3,10 +3,9 @@
 
 ChessBoard::ChessBoard() {
 	
-	w_King = '\0';
-	b_King = '\0';
-	allMoves = '\0';
-	memset(board, 0, sizeof(Piece));
+	w_King = nullptr;
+	b_King = nullptr;
+	allMoves = nullptr;
 	
 	Init_Board();
 	Init_White_Piece();
@@ -19,10 +18,10 @@ ChessBoard::~ChessBoard() {
 
 	ClearBoard();
 
-	w_King = '\0';
-	b_King = '\0';
+	w_King = nullptr;
+	b_King = nullptr;
 
-	if (allMoves != NULL)
+	if (allMoves != nullptr)
 		delete allMoves;	
 }
 
@@ -31,10 +30,10 @@ void ChessBoard::ClearBoard() {
 	for (int i = 0; i < 8; i++) {
 		for (int j = 0; j < 8; j++) {
 
-			if (board[i][j] != NULL) {
+			if (board[i][j] != nullptr) {
 
 				delete board[i][j];
-				board[i][j] = '\0';
+				board[i][j] = nullptr;
 			}
 		}
 	}
@@ -44,7 +43,7 @@ void ChessBoard::Init_Board() {
 
 	for (int i = 0; i < 8; i++) {
 		for (int j = 0; j < 8; j++) {
-			board[i][j] = '\0';
+			board[i][j] = nullptr;
 		}
 	}
 }
@@ -98,20 +97,20 @@ Piece* ChessBoard::GetPiece(int row, int col) const {
 void ChessBoard::MovePiece(int r_selected, int c_selected, int row, int col) {
 
 	board[row][col] = board[r_selected][c_selected];
- 	board[r_selected][c_selected] = '\0';
+	board[r_selected][c_selected] = nullptr;
 	(board[row][col])->Update_location(row, col);
 }
 
 void ChessBoard::Reset_Piece (const int s_row, const int s_col, const int end_r, const int end_col) {
 
 	board[s_row][s_col] = board[end_r][end_col];
-	board[end_r][end_col] = '\0';
+	board[end_r][end_col] = nullptr;
 	(board[s_row][s_col])->Update_location(s_row, s_col);
 }
 
 void ChessBoard::PutBack_Piece(Piece* piece, const int row, const int col) {
 	
-	assert(piece != NULL);
+	assert(piece != nullptr);
 	board[row][col] = piece;
 }
 
@@ -148,7 +147,7 @@ bool ChessBoard::Test(std::ostream & os) {
 		std::cout<<"\tPiece testing -- fail"<<std::endl;
 	
 	p = cb.GetPiece(2,1);
-	TEST(p == NULL);
+	TEST(p == nullptr);
 	if (success)
 		std::cout<<"\tChess board testing success"<<std::endl;
 	else
@@ -159,9 +158,9 @@ bool ChessBoard::Test(std::ostream & os) {
 	cb.MovePiece(1, 0, 2, 1);  //move pawn 
 	Piece* p1 = cb.GetPiece(1,0);
 	Piece* q1 = cb.GetPiece(2,1);
-	TEST(p1 == NULL);
+	TEST(p1 == nullptr);
 	if (success) {
-		TEST(q1 != NULL);
+		TEST(q1 != nullptr);
 		if (success) {
 			TEST(q1->GetType() == PAWN);
 			if (success)
@@ -181,7 +180,7 @@ bool ChessBoard::Test(std::ostream & os) {
 	TEST(q2->GetType() == KNIGHT);
 	if(success) {
 		Knight* k = dynamic_cast<Knight*>(q2);
-		TEST(k!=NULL);
+		TEST(k != nullptr);
 		if (success)
 			std::cout<<"\tAttack Piece testing success."<<std::endl;
 		else
@@ -223,7 +222,7 @@ bool ChessBoard::Test(std::ostream & os) {
 
 	cb.ClearBoard();
 	q1 = cb.GetPiece(2,1);
-	TEST(q1 == NULL);
+	TEST(q1 == nullptr);
 	if (success)
 		std::cout<<"\tClear board testing success."<<std::endl;
 	else
@@ -232,5 +231,3 @@ bool ChessBoard::Test(std::ostream & os) {
 
 	return success;
 }
-
-

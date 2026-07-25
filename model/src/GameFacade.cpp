@@ -4,11 +4,11 @@
 
 GameFacade::GameFacade() {
 	//std::cout<<"**** game facade ****"<<std::endl;
-	board = '\0'; 
-	cur_Piece = '\0';
-	attack_Piece = '\0';
-	valid_moves = '\0';
-	undo_once = '\0';
+	board = nullptr;
+	cur_Piece = nullptr;
+	attack_Piece = nullptr;
+	valid_moves = nullptr;
+	undo_once = nullptr;
 }
 
 GameFacade::~GameFacade() {
@@ -19,21 +19,21 @@ GameFacade::~GameFacade() {
 }
 
 void GameFacade::Clear_Board() {
-	if (board != NULL){
+	if (board != nullptr){
 		delete board;
-		board = '\0';
+		board = nullptr;
 	}
 
-	if (valid_moves != NULL) {
+	if (valid_moves != nullptr) {
 		delete valid_moves;
-		valid_moves = '\0';
+		valid_moves = nullptr;
 	}
 }
 
 void GameFacade::ClearUndo() {
-	if (undo_once != NULL) {
+	if (undo_once != nullptr) {
 		delete undo_once;
-		undo_once = '\0';
+		undo_once = nullptr;
 	}
 }
 
@@ -42,7 +42,7 @@ void GameFacade::ClearHistory() {
 		undo_once = move_history.back();
 		move_history.pop_back();
 		delete undo_once;
-		undo_once = '\0';
+		undo_once = nullptr;
 	}
 }
 
@@ -50,8 +50,8 @@ void GameFacade::NewGame() {
 	Clear_Board();
 	ClearUndo();
 	ClearHistory();
-	cur_Piece = '\0';
-	attack_Piece = '\0';
+	cur_Piece = nullptr;
+	attack_Piece = nullptr;
 	board = new ChessBoard();
 
 }
@@ -60,8 +60,8 @@ void GameFacade::LoadGame() {
 	Clear_Board();
 	ClearUndo();
 	ClearHistory();
-	cur_Piece = '\0';
-	attack_Piece = '\0';
+	cur_Piece = nullptr;
+	attack_Piece = nullptr;
 	board = new ChessBoard();
 }
 */
@@ -85,7 +85,7 @@ bool GameFacade::isCellTaken(int row, int col) {
 
 	attack_Piece = board->GetPiece(row, col);
 
-	if (attack_Piece != NULL) 
+	if (attack_Piece != nullptr)
 	//	if (attack_Piece->GetColor() != cur_Piece->GetColor())
 		return true;
 
@@ -98,8 +98,8 @@ Piece * GameFacade::GetPiece(int row, int col, PieceColor color) {
 	cur_Piece = board->GetPiece(row, col);    //cur_Piece is change to the item of current cell
 	
 	//std::cout<<"I got it...."<<std::endl;
-	if (cur_Piece != NULL && cur_Piece->GetColor() != color) {
-		cur_Piece = '\0';
+	if (cur_Piece != nullptr && cur_Piece->GetColor() != color) {
+		cur_Piece = nullptr;
 		//std::cout<<"NO, it's wrong..."<<std::endl;
 	}
 	
@@ -108,7 +108,7 @@ Piece * GameFacade::GetPiece(int row, int col, PieceColor color) {
 
 std::set<BoardPosition> & GameFacade::GetValidMoves() {
 
-	if (valid_moves != NULL)
+	if (valid_moves != nullptr)
 		delete valid_moves;
 
 	valid_moves = new std::set<BoardPosition>;
@@ -119,8 +119,8 @@ std::set<BoardPosition> & GameFacade::GetValidMoves() {
 
 void GameFacade::Look_for_Moves() {
 	//std::cout<<"facade check the movements.."<<std::endl;
-	assert(cur_Piece != NULL);
-	assert(board != NULL);
+	assert(cur_Piece != nullptr);
+	assert(board != nullptr);
 
 	//valid_moves = &(cur_Piece->GetValidMove(board));
 	std::set<BoardPosition> * temp_moves = &(cur_Piece->GetValidMove(board));
@@ -173,9 +173,9 @@ std::set<BoardPosition> & GameFacade::Board_Check(int row, int col, int new_r, i
 		//delete allMoves;	
 	std::set<BoardPosition> * allMoves = new std::set<BoardPosition>;
 
-	Piece * temp ='\0';
+	Piece * temp = nullptr;
 	// if there is piece taken that cell
-	if (board->GetPiece(new_r, new_c) != NULL)
+	if (board->GetPiece(new_r, new_c) != nullptr)
 		temp = board->GetPiece(new_r, new_c);
 	PieceColor color = cur_Piece->GetColor();
 
@@ -184,7 +184,7 @@ std::set<BoardPosition> & GameFacade::Board_Check(int row, int col, int new_r, i
 	for (int i =0; i<8; i++) {
 		for (int j=0; j<8; j++){
 			Piece * each_piece = board->GetPiece(i,j);
-			if (each_piece != NULL && each_piece->GetColor() != color) {
+			if (each_piece != nullptr && each_piece->GetColor() != color) {
 				std::set<BoardPosition> * moves = &(each_piece->GetValidMove(board));
 				Build_Move_Set(moves, allMoves);
 			}
@@ -193,7 +193,7 @@ std::set<BoardPosition> & GameFacade::Board_Check(int row, int col, int new_r, i
 
 	board->Reset_Piece(row, col, new_r, new_c);
 
-	if (temp != NULL)
+	if (temp != nullptr)
 		board->PutBack_Piece(temp, new_r, new_c);
 
 	return *allMoves;
@@ -212,10 +212,10 @@ void GameFacade::MovePiece(int r_selected, int col_selected, int row, int col) {
 	
 	//std::cout<<"\tfacade MovePiece..."<<std::endl;
 	cur_Piece = board->GetPiece(r_selected, col_selected);   // change cur_Piece back.
-	assert(cur_Piece != NULL);
+	assert(cur_Piece != nullptr);
 	PieceHistory * history = new PieceHistory(cur_Piece, r_selected, col_selected, row, col);
 
-	if (attack_Piece != NULL) {
+	if (attack_Piece != nullptr) {
 		history->Take_Piece(attack_Piece);
 	}
 	move_history.push_back(history);
@@ -256,12 +256,12 @@ void GameFacade::SaveGame(const std::string & fileName) {
 
 }
 
-bool GameFacade::Check(int row, int col) {
-	assert(cur_Piece != NULL);
-	assert(board != NULL);
+bool GameFacade::Check(int, int) {
+	assert(cur_Piece != nullptr);
+	assert(board != nullptr);
 	std::set<BoardPosition> * temp_moves = &(cur_Piece->GetValidMove(board));
 
-	Piece * king = '\0';
+	Piece * king = nullptr;
 
 	if ( cur_Piece->GetColor() == WHITE)
 		king = board->GetKing(BLACK);
@@ -281,16 +281,16 @@ bool GameFacade::Check(int row, int col) {
 }
 
 // Check current status is in stuck
-bool GameFacade::Mate(int row, int col) {
-	assert(cur_Piece != NULL);
-	assert(board != NULL);
+bool GameFacade::Mate(int, int) {
+	assert(cur_Piece != nullptr);
+	assert(board != nullptr);
 
 	PieceColor color = cur_Piece->GetColor();
 	//std::cout<<"current piece color: "<<cur_Piece->GetColor()<<std::endl;
 	for (int i =0; i<8; i++) {
 		for (int j=0; j<8; j++){
 			cur_Piece = board->GetPiece(i,j);
-			if (cur_Piece != NULL && cur_Piece->GetColor() != color) {
+			if (cur_Piece != nullptr && cur_Piece->GetColor() != color) {
 				GetValidMoves();
 				//std::cout<<"???????????????? size: "<<valid_moves->size()<<std::endl;
 				if (valid_moves->size() != 0){
@@ -332,7 +332,7 @@ bool GameFacade::Test(std::ostream & os) {
 	game.GetPiece(7, 6, WHITE);  // w_knight
 	game.isCellTaken(1,1);    // must check if the cell is token by 
 	game.MovePiece(7, 6, 1, 1);	     // w_knight -> b_pawn
-	TEST((game.board)->GetPiece(7,6) == NULL);
+	TEST((game.board)->GetPiece(7,6) == nullptr);
 	if (success) {
 		Piece* q1 = (game.board)->GetPiece(1,1);
 		TEST(q1->GetType() == KNIGHT);
@@ -372,7 +372,7 @@ bool GameFacade::Test(std::ostream & os) {
 		PieceHistory * q3 = (game.move_history).back();
 		
 		//TEST(q3->GetType_Attack() == KNIGHT);
-		TEST(q3->Get_Attack_Piece() == NULL);
+		TEST(q3->Get_Attack_Piece() == nullptr);
 		if (success) {
 			std::cout<<"\tMove_History Attacked piece record testing success. --- back."<<std::endl;
 			TEST(q3->GetType_Moving() == BISHOP);
@@ -388,7 +388,7 @@ bool GameFacade::Test(std::ostream & os) {
 		std::cout<<"\tMove_History size testing failed!!!"<<std::endl;
 //******************************************************
 	Piece * p4 = (game.board)->GetPiece(0,2);
-	TEST(p4 == NULL);
+	TEST(p4 == nullptr);
 	if (success) {
 		game.Undo();
 		TEST((game.move_history).size() == 1);
@@ -397,13 +397,13 @@ bool GameFacade::Test(std::ostream & os) {
 		else
 			std::cout<<"\tMove_History Undo size testing Failed!!"<<std::endl;
 		p4 = (game.board)->GetPiece(0,2);
-		TEST(p4 != NULL);
+		TEST(p4 != nullptr);
 		if (success) {
 			TEST(p4->GetType() == BISHOP);
 			if (success) {
 				TEST(p4->GetColor() == BLACK);
 				if (success) {
-					TEST((game.board)->GetPiece(2, 1) == NULL);
+					TEST((game.board)->GetPiece(2, 1) == nullptr);
 					if (success) 
 						std::cout<<"\tFirst Undo testing passed!!!"<<std::endl;
 					else
@@ -460,5 +460,3 @@ bool GameFacade::Test(std::ostream & os) {
 		std::cout<<"\tAdd Move history testing failed!!!"<<std::endl;
 	return success;
 }
-
-

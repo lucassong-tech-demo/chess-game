@@ -22,7 +22,7 @@ void Xml::WriteBoard(std::ofstream & file, ChessBoard * board) {
 	for (int i=0; i<8; i++) {
 		for (int j=0; j<8; j++) {
 			Piece * temp = board->GetPiece(i, j);
-			if (temp != NULL) {
+			if (temp != nullptr) {
 				std::string type = temp->Type_String();
 				std::string color = temp->Color_String();
 				file <<"   <piece type=\""<<type<<"\" color=\""<<color<<"\" column=\""<<j<<"\" row=\""<<i<<"\" />"<<std::endl;	
@@ -35,11 +35,11 @@ void Xml::WriteBoard(std::ofstream & file, ChessBoard * board) {
 
 
 void Xml::WriteHistory(std::ofstream & file, std::vector<PieceHistory *> & history){
-	PieceHistory * temp = '\0';
-	Piece * piece = '\0';
+	PieceHistory * temp = nullptr;
+	Piece * piece = nullptr;
 
 	file <<" -<history>\n";
-	for (int i = 0; i<history.size(); i++) {
+	for (std::size_t i = 0; i < history.size(); i++) {
 		temp = history.at(i);
 		piece = temp->Get_Moving_Piece();
 
@@ -65,6 +65,5 @@ void Xml::WriteHistory(std::ofstream & file, std::vector<PieceHistory *> & histo
 
 	file <<"  </history>\n";	
 }
-
 
 

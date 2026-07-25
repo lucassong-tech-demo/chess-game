@@ -15,11 +15,11 @@ private:
 
 public:
 	Queen(PieceType type, PieceColor color, int row, int column):Piece(type, color, row, column){
-		movements = '\0';
+		movements = nullptr;
 	}
 
 	~Queen(){
-		if (movements != NULL)
+		if (movements != nullptr)
 			delete movements;
 		//std::cout<<"Queue destructor.."<<std::endl;
 	}

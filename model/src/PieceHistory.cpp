@@ -7,7 +7,7 @@ PieceHistory::PieceHistory(Piece * m_Piece, int s_row, int s_col, int end_r, int
 	start_column = s_col;
 	end_row = end_r;
 	end_column = end_c;
-	attacked_piece = '\0';
+	attacked_piece = nullptr;
 }
 
 
@@ -40,7 +40,7 @@ Piece * PieceHistory::Get_Attack_Piece() const {
 }
 
 bool PieceHistory::IsAttackPieceHere() const {
-	if (attacked_piece == NULL)
+	if (attacked_piece == nullptr)
 		return false;
 	return true;
 }
@@ -60,5 +60,4 @@ int PieceHistory::Get_E_Row() const {
 int PieceHistory::Get_E_Column() const {
 	return end_column;
 }
-
 

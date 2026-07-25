@@ -11,11 +11,11 @@ private:
 
 public:
 	Knight(PieceType type, PieceColor color, int row, int column): Piece(type, color, row, column){
-		movements = '\0';	
+		movements = nullptr;
 	}
 
 	~Knight(){
-		if (movements != NULL)
+		if (movements != nullptr)
 			delete movements;
 		//std::cout<<"Knight destructor.."<<std::endl;
 	}

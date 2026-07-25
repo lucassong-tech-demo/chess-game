@@ -2,7 +2,7 @@
 #include "ChessBoard.h"
 
 std::set<BoardPosition> & Queen::GetValidMove(ChessBoard * board) {
-	if (movements != NULL)
+	if (movements != nullptr)
 		delete movements;
 
 	movements = new std::set<BoardPosition>;
@@ -24,7 +24,7 @@ void Queen::Forward(ChessBoard * board) {
 	int i = 1;
 	while (row-i >= 0) {
 		Piece * piece = board->GetPiece(row-i, column);
-		if ( piece != NULL) {
+		if ( piece != nullptr) {
 			if ( piece->GetColor() != color) {
 				BoardPosition bp(row-i, column);
 				movements->insert(bp);
@@ -41,7 +41,7 @@ void Queen::Right(ChessBoard * board) {
 	int i = 1;
 	while (column+i <=7) {
 		Piece * piece = board->GetPiece(row, column+i);
-		if ( piece != NULL) {
+		if ( piece != nullptr) {
 			if ( piece->GetColor() != color) {
 				BoardPosition bp(row, column+i);
 				movements->insert(bp);
@@ -58,7 +58,7 @@ void Queen::Left(ChessBoard * board) {
 	int i = 1;
 	while (column-i >= 0) {
 		Piece * piece = board->GetPiece(row, column-i);
-		if ( piece != NULL) {
+		if ( piece != nullptr) {
 			if ( piece->GetColor() != color) {
 				BoardPosition bp(row, column-i);
 				movements->insert(bp);
@@ -75,7 +75,7 @@ void Queen::Back(ChessBoard * board) {
 	int i = 1;
 	while (row+i <= 7) {
 		Piece * piece = board->GetPiece(row+i, column);
-		if ( piece != NULL) {
+		if ( piece != nullptr) {
 			if ( piece->GetColor() != color) {
 				BoardPosition bp(row+i, column);
 				movements->insert(bp);
@@ -93,7 +93,7 @@ void Queen::Forward_left(ChessBoard * board) {
 	int i = 1;
 	while (row - i >= 0 && column - i >= 0) {
 		Piece * piece = board->GetPiece(row-i, column-i);
-		if ( piece != NULL) {
+		if ( piece != nullptr) {
 			if ( piece->GetColor() != color) {
 				BoardPosition bp(row-i, column-i);
 				movements->insert(bp);
@@ -110,7 +110,7 @@ void Queen::Forward_right(ChessBoard * board) {
 	int i = 1;
 	while (row - i >= 0 && column + i <= 7) {
 		Piece * piece = board->GetPiece(row-i, column+i);
-		if ( piece != NULL) {
+		if ( piece != nullptr) {
 			if ( piece->GetColor() != color) {
 				BoardPosition bp(row-i, column+i);
 				movements->insert(bp);
@@ -127,7 +127,7 @@ void Queen::Back_left(ChessBoard * board) {
 	int i = 1;
 	while (row + i <= 7 && column - i >= 0) {
 		Piece * piece = board->GetPiece(row+i, column-i);
-		if ( piece != NULL) {
+		if ( piece != nullptr) {
 			if ( piece->GetColor() != color) {
 				BoardPosition bp(row+i, column-i);
 				movements->insert(bp);
@@ -144,7 +144,7 @@ void Queen::Back_right(ChessBoard * board) {
 	int i = 1;
 	while (row + i <= 7 && column + i <= 7) {
 		Piece * piece = board->GetPiece(row+i, column+i);
-		if ( piece != NULL) {
+		if ( piece != nullptr) {
 			if ( piece->GetColor() != color) {
 				BoardPosition bp(row+i, column+i);
 				movements->insert(bp);
@@ -156,4 +156,3 @@ void Queen::Back_right(ChessBoard * board) {
 		i++;
 	}
 }
-

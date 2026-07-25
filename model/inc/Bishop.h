@@ -13,11 +13,11 @@ private:
 
 public:
 	Bishop(PieceType type, PieceColor color, int row, int column): Piece(type, color, row, column){
-		movements = '\0';
+		movements = nullptr;
 	}
 
 	~Bishop(){
-		if (movements != NULL)
+		if (movements != nullptr)
 			delete movements;
 	}
 
