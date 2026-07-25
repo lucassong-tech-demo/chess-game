@@ -1,0 +1,87 @@
+name: Core CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: core-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS 26 / arm64 / Apple Clang
+            runner: macos-26
+            arch: arm64
+            cc: clang
+            cxx: clang++
+          - name: Ubuntu 24.04 / x86_64 / GCC
+            runner: ubuntu-24.04
+            arch: x86_64
+            cc: gcc
+            cxx: g++
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Install build tools on macOS
+        if: runner.os == 'macOS'
+        run: brew install meson ninja pkgconf
+
+      - name: Install build tools on Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential meson ninja-build pkg-config
+
+      - name: Report build environment
+        run: |
+          uname -a
+          actual_arch="$(uname -m)"
+          echo "Architecture: ${actual_arch}"
+          test "${actual_arch}" = "${{ matrix.arch }}"
+          "${CXX}" --version
+          meson --version
+          ninja --version
+
+      - name: Configure
+        run: meson setup build
+
+      - name: Compile
+        run: meson compile -C build
+
+      - name: Test
+        run: meson test -C build --print-errorlogs
+
+      - name: Configure sanitizers
+        run: >
+          meson setup build-sanitize
+          -Db_sanitize=address,undefined
+          -Db_lundef=false
+
+      - name: Compile with sanitizers
+        run: meson compile -C build-sanitize
+
+      - name: Test with sanitizers
+        env:
+          # LeakSanitizer is outside this ASan/UBSan baseline and is unsupported
+          # by Apple's bundled sanitizer runtime.
+          ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+        run: meson test -C build-sanitize --print-errorlogs
