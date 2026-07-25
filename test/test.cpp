@@ -32,7 +32,6 @@ int main() {
 	}
 
 
-	return 0;
+	return success ? 0 : 1;
 }
-
 
