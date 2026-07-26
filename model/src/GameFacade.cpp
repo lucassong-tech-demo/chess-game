@@ -157,7 +157,7 @@ std::set<BoardPosition> GameFacade::BoardCheck(
 	return opponent_moves;
 }
 
-bool GameFacade::isCellTaken(int row, int col)
+bool GameFacade::isCellTaken(int row, int col) const
 {
 	RequireBoard();
 	return board_->GetPiece(row, col) != nullptr;

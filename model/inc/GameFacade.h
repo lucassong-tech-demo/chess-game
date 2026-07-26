@@ -26,7 +26,7 @@ public:
 	void NewGame();
 	Piece * GetPiece(int row, int col, PieceColor color);
 	std::set<BoardPosition> & GetValidMoves();
-	bool isCellTaken(int row, int col);
+	bool isCellTaken(int row, int col) const;
 	bool isValidMove(int row, int col) const;
 
 	void MovePiece(int source_row, int source_col, int destination_row, int destination_col);
