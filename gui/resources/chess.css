@@ -17,7 +17,7 @@ window {
   background: #332c29;
 }
 
-button.board-cell {
+.board-cell {
   min-width: 48px;
   min-height: 48px;
   padding: 4px;
@@ -26,23 +26,23 @@ button.board-cell {
   box-shadow: none;
 }
 
-button.board-cell.light {
+.board-cell.light {
   background: #e8d7b7;
 }
 
-button.board-cell.dark {
+.board-cell.dark {
   background: #8a6247;
 }
 
-button.board-cell:hover {
+.board-cell:hover {
   box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.34);
 }
 
-button.board-cell.selected {
+.board-cell.selected {
   box-shadow: inset 0 0 0 5px #2d8a55;
 }
 
-button.board-cell.legal {
+.board-cell.legal {
   background-image: radial-gradient(
     circle,
     rgba(42, 117, 74, 0.82) 0%,
@@ -51,7 +51,7 @@ button.board-cell.legal {
   );
 }
 
-button.board-cell.capture {
+.board-cell.capture {
   box-shadow: inset 0 0 0 5px #c94a4a;
 }
 
