@@ -30,7 +30,7 @@ void Xml::WriteIntoFile(
 {
 	std::ofstream file(file_name);
 	if (!file.is_open()) {
-		std::cout << "open fail!!!\n";
+		throw std::runtime_error("unable to open save file: " + file_name);
 	}
 
 	file << "-<chessgame>\n";
