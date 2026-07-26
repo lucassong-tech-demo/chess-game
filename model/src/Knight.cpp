@@ -12,7 +12,7 @@ std::set<BoardPosition> Knight::GetValidMove(const ChessBoard & board) const
 		{1, -2}, {1, 2}, {2, -1}, {2, 1}
 	}};
 	std::set<BoardPosition> moves;
-	for (const auto [row_offset, col_offset] : offsets) {
+	for (const auto & [row_offset, col_offset] : offsets) {
 		AddMoveIfAvailable(
 			moves, board, color, row + row_offset, column + col_offset);
 	}
