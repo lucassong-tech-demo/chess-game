@@ -19,9 +19,6 @@ private:
 	Piece * myPiece;
 	PieceType type;   // current moving piece type, so that the GUI can be updated.
 					  // return the type to GameController
-	bool turn;
-	
-
 public:
 
 	HumanPlayer(PieceColor color, GameFacade & gf);

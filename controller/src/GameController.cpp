@@ -5,16 +5,16 @@
 GameController::GameController(int option) {
 
 	std::cout<<"Game STart ... "<<option<<std::endl;
-	gui_View = '\0';
-	player_one = '\0';
-	player_two = '\0';
+	gui_View = nullptr;
+	player_one = nullptr;
+	player_two = nullptr;
 	w_turn = true;    //white go firstly
 	row_selected = -1;
 	col_selected = -1;
 	piece_selected = false;
 	game_start = false;
 	game_mode = option;
-	move_choices = '\0';
+	move_choices = nullptr;
 	fileName = "";
 	is_On = false;
 }
@@ -31,8 +31,8 @@ void GameController::ResetPlayer() {
 		delete player_one;
 		delete player_two;
 
-		player_one = '\0';
-		player_two = '\0';
+		player_one = nullptr;
+		player_two = nullptr;
 	}
 }
 
@@ -103,7 +103,7 @@ void GameController::HumanPlayer_Move(int row, int col, int button, ChessPlayer*
 			piece_selected = false;  // unselect !!! only one move...
 			row_selected = -1;
 			col_selected = -1;
-			move_choices = '\0'; //change back
+			move_choices = nullptr; //change back
 		}
 	}
 }
@@ -319,7 +319,7 @@ void GameController::on_NewGame() {
 	piece_selected = false;
 	game_start = false;
 	fileName = "";
-	move_choices = '\0';
+	move_choices = nullptr;
 	is_On = false;
 	game.NewGame();
 	Clear_Board();
@@ -434,7 +434,7 @@ void GameController::on_LoadGame() {
 		piece_selected = false;
 		game_start = false;
 		
-		move_choices = '\0';
+		move_choices = nullptr;
 		game.NewGame();
 		Clear_Board();
 		place_BlackPiece();
@@ -519,17 +519,13 @@ void GameController::AutoPlay(int row, int col){
 	 * Handle when the user selected the undo move button.
 	 */
 void GameController::on_UndoMove() {
-	PieceHistory * history = game.Undo();
+	const PieceHistory * history = game.Undo();
 	if (history != NULL) {
 		
 		int s_row = history->Get_S_Row();
 		int s_col = history->Get_S_Column();
 		int end_row = history->Get_E_Row();
 		int end_col = history->Get_E_Column();
-		Piece * m_piece = history->Get_Moving_Piece();		
-		
-		assert(m_piece != NULL);
-
 		if (move_choices != NULL)
 			Undo_Highlight();	
 		// reverse order --- from the end to begining!
@@ -586,17 +582,10 @@ void GameController::ComputerPlayer_Move(ChessPlayer* player) {
 		pc->on_TimerEvent();
 		move_choices = &(pc->GetValidMoves());
 
-		BoardPosition bp;
-		for (std::set< BoardPosition > :: const_iterator iter = move_choices->begin();
-		iter != move_choices->end(); ++iter) {
-			bp = *iter;
-			int row = bp.GetRow();
-			int col = bp.GetColumn();
-			std::cout<<"( "<<row<<" , "<<col<<" )"<<std::endl;
-			break;
-		}
+		const BoardPosition & bp = *move_choices->begin();
 		int row = bp.GetRow();
 		int col = bp.GetColumn();
+		std::cout<<"( "<<row<<" , "<<col<<" )"<<std::endl;
 	
 		row_selected = pc->GetRow();
 		col_selected = pc->GetColumn();
@@ -604,11 +593,9 @@ void GameController::ComputerPlayer_Move(ChessPlayer* player) {
 		Move_Or_Attack(row, col, player);
 		row_selected = -1;
 		col_selected = -1;
-		move_choices = '\0'; //change back
+		move_choices = nullptr; //change back
 		is_On = false;
 	}	
 	
 }
-
-
 
