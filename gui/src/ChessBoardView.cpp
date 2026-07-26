@@ -34,13 +34,13 @@ ChessBoardView::ChessBoardView()
 
 	for (int row = 0; row < ChessBoard::Size; ++row) {
 		for (int col = 0; col < ChessBoard::Size; ++col) {
-			auto * cell = Gtk::make_managed<Gtk::Box>(
-				Gtk::Orientation::VERTICAL);
+			auto * cell = Gtk::make_managed<Gtk::Button>();
 			auto * picture = Gtk::make_managed<Gtk::Picture>();
 			cell->add_css_class("board-cell");
 			cell->add_css_class((row + col) % 2 == 0 ? "light" : "dark");
 			cell->set_hexpand(true);
 			cell->set_vexpand(true);
+			cell->set_focus_on_click(false);
 			cell->set_tooltip_text(
 				std::string(1, static_cast<char>('a' + col))
 				+ std::to_string(ChessBoard::Size - row));
@@ -50,15 +50,9 @@ ChessBoardView::ChessBoardView()
 			picture->set_content_fit(Gtk::ContentFit::CONTAIN);
 			picture->set_hexpand(true);
 			picture->set_vexpand(true);
-			cell->append(*picture);
-
-			auto click = Gtk::GestureClick::create();
-			click->set_button(1);
-			click->signal_released().connect(
-				[this, row, col](int, double, double) {
-					cell_selected_.emit(row, col);
-				});
-			cell->add_controller(click);
+			cell->set_child(*picture);
+			cell->signal_clicked().connect(
+				[this, row, col] { cell_selected_.emit(row, col); });
 
 			grid_.attach(*cell, col, row);
 			cells_[Index(row, col)] = cell;
@@ -71,7 +65,7 @@ void ChessBoardView::Refresh(const ChessSession & session)
 {
 	for (int row = 0; row < ChessBoard::Size; ++row) {
 		for (int col = 0; col < ChessBoard::Size; ++col) {
-			Gtk::Box & cell = *cells_[Index(row, col)];
+			Gtk::Button & cell = *cells_[Index(row, col)];
 			Gtk::Picture & picture = *pictures_[Index(row, col)];
 			cell.remove_css_class("selected");
 			cell.remove_css_class("legal");
