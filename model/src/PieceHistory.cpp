@@ -1,63 +1,62 @@
 #include "PieceHistory.h"
 
+#include <stdexcept>
 
-PieceHistory::PieceHistory(Piece * m_Piece, int s_row, int s_col, int end_r, int end_c) {
-	moving_piece = m_Piece;
-	start_row = s_row;
-	start_column = s_col;
-	end_row = end_r;
-	end_column = end_c;
-	attacked_piece = nullptr;
+#include "ChessBoard.h"
+
+PieceSnapshot PieceSnapshot::FromPiece(const Piece & piece) noexcept
+{
+	return {piece.GetType(), piece.GetColor(), piece.GetRow(), piece.GetColumn()};
 }
 
-
-void PieceHistory::Take_Piece(Piece * t_Piece) {
-	attacked_piece = t_Piece;
+PieceHistory::PieceHistory(
+	const Piece & moving_piece,
+	int start_row,
+	int start_column,
+	int end_row,
+	int end_column,
+	const Piece * attacked_piece)
+	: moving_piece_(PieceSnapshot::FromPiece(moving_piece)),
+	  start_row_(start_row),
+	  start_column_(start_column),
+	  end_row_(end_row),
+	  end_column_(end_column)
+{
+	if (!ChessBoard::IsValidPosition(start_row, start_column)
+		|| !ChessBoard::IsValidPosition(end_row, end_column)) {
+		throw std::out_of_range("history coordinates must be between 0 and 7");
+	}
+	if (attacked_piece) {
+		attacked_piece_ = PieceSnapshot::FromPiece(*attacked_piece);
+	}
 }
 
-PieceType PieceHistory::GetType_Moving() const {
-	return moving_piece->GetType();
-}
-	
-PieceColor PieceHistory::GetColor_Moving() const {
-	return moving_piece->GetColor();
+PieceType PieceHistory::GetType_Moving() const noexcept { return moving_piece_.type; }
+PieceColor PieceHistory::GetColor_Moving() const noexcept { return moving_piece_.color; }
+bool PieceHistory::IsAttackPieceHere() const noexcept { return attacked_piece_.has_value(); }
+
+PieceType PieceHistory::GetType_Attack() const
+{
+	if (!attacked_piece_) {
+		throw std::logic_error("move did not capture a piece");
+	}
+	return attacked_piece_->type;
 }
 
-PieceType PieceHistory::GetType_Attack() const {
-	return attacked_piece->GetType();
+PieceColor PieceHistory::GetColor_Attack() const
+{
+	if (!attacked_piece_) {
+		throw std::logic_error("move did not capture a piece");
+	}
+	return attacked_piece_->color;
 }
 
-PieceColor PieceHistory::GetColor_Attack() const {
-	return attacked_piece->GetColor();
+const PieceSnapshot & PieceHistory::GetMovingSnapshot() const noexcept { return moving_piece_; }
+const std::optional<PieceSnapshot> & PieceHistory::GetAttackSnapshot() const noexcept
+{
+	return attacked_piece_;
 }
-
-Piece * PieceHistory::Get_Moving_Piece() const {
-	return moving_piece;
-}
-
-Piece * PieceHistory::Get_Attack_Piece() const {
-	return attacked_piece;
-}
-
-bool PieceHistory::IsAttackPieceHere() const {
-	if (attacked_piece == nullptr)
-		return false;
-	return true;
-}
-
-int PieceHistory::Get_S_Row() const {
-	 return start_row;
-}
-
-int PieceHistory::Get_S_Column() const {
-	return start_column;
-}
-
-int PieceHistory::Get_E_Row() const {
-	return end_row;
-}
-
-int PieceHistory::Get_E_Column() const {
-	return end_column;
-}
-
+int PieceHistory::Get_S_Row() const noexcept { return start_row_; }
+int PieceHistory::Get_S_Column() const noexcept { return start_column_; }
+int PieceHistory::Get_E_Row() const noexcept { return end_row_; }
+int PieceHistory::Get_E_Column() const noexcept { return end_column_; }

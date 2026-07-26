@@ -12,11 +12,7 @@ private:
 	int column;
 
 public:
-	BoardPosition(){}
-
-	BoardPosition(int r, int col):row(r),column(col){}
-
-	BoardPosition(const BoardPosition & other);
+	BoardPosition(int r, int col);
 
 	bool operator <(const BoardPosition & other)const;
 	

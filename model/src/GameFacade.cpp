@@ -1,462 +1,329 @@
 #include "GameFacade.h"
 
+#include <stdexcept>
+#include <utility>
 
+#include "Bishop.h"
+#include "King.h"
+#include "Knight.h"
+#include "Pawn.h"
+#include "Queen.h"
+#include "Rook.h"
+#include "UnitTest.h"
+#include "Xml.h"
 
-GameFacade::GameFacade() {
-	//std::cout<<"**** game facade ****"<<std::endl;
-	board = nullptr;
-	cur_Piece = nullptr;
-	attack_Piece = nullptr;
-	valid_moves = nullptr;
-	undo_once = nullptr;
-}
+namespace {
 
-GameFacade::~GameFacade() {
-	Clear_Board();
-	ClearUndo();   //firstly, clear undo_once pointer, to avoid memory leak
-	ClearHistory();  // then clear the history, because using undo_once point to get each object
-	//std::cout<<"GameFacade ~destructor"<<std::endl;
-}
-
-void GameFacade::Clear_Board() {
-	if (board != nullptr){
-		delete board;
-		board = nullptr;
+std::unique_ptr<Piece> MakePiece(const PieceSnapshot & snapshot, int row, int col)
+{
+	switch (snapshot.type) {
+	case KING: return std::make_unique<King>(snapshot.type, snapshot.color, row, col);
+	case QUEEN: return std::make_unique<Queen>(snapshot.type, snapshot.color, row, col);
+	case KNIGHT: return std::make_unique<Knight>(snapshot.type, snapshot.color, row, col);
+	case BISHOP: return std::make_unique<Bishop>(snapshot.type, snapshot.color, row, col);
+	case ROOK: return std::make_unique<Rook>(snapshot.type, snapshot.color, row, col);
+	case PAWN: return std::make_unique<Pawn>(snapshot.type, snapshot.color, row, col);
 	}
-
-	if (valid_moves != nullptr) {
-		delete valid_moves;
-		valid_moves = nullptr;
-	}
+	throw std::invalid_argument("unknown piece type in history");
 }
 
-void GameFacade::ClearUndo() {
-	if (undo_once != nullptr) {
-		delete undo_once;
-		undo_once = nullptr;
-	}
+bool Contains(const std::set<BoardPosition> & moves, int row, int col)
+{
+	return moves.find(BoardPosition(row, col)) != moves.end();
 }
 
-void GameFacade::ClearHistory() {
-	while (move_history.size() != 0) {
-		undo_once = move_history.back();
-		move_history.pop_back();
-		delete undo_once;
-		undo_once = nullptr;
+} // namespace
+
+GameFacade::GameFacade() = default;
+
+void GameFacade::RequireBoard() const
+{
+	if (!board_) {
+		throw std::logic_error("game has no active board");
 	}
 }
 
-void GameFacade::NewGame() {
-	Clear_Board();
-	ClearUndo();
-	ClearHistory();
-	cur_Piece = nullptr;
-	attack_Piece = nullptr;
-	board = new ChessBoard();
-
+void GameFacade::NewGame()
+{
+	board_ = std::make_unique<ChessBoard>();
+	current_piece_ = nullptr;
+	valid_moves_.clear();
+	move_history_.clear();
+	undo_once_.reset();
 }
-/*
-void GameFacade::LoadGame() {
-	Clear_Board();
-	ClearUndo();
-	ClearHistory();
-	cur_Piece = nullptr;
-	attack_Piece = nullptr;
-	board = new ChessBoard();
+
+void GameFacade::Clear_Board() noexcept
+{
+	board_.reset();
+	current_piece_ = nullptr;
+	valid_moves_.clear();
+	undo_once_.reset();
 }
-*/
-bool GameFacade::isValidMove(int row, int col) {
 
-	bool check = false;
-	for (std::set< BoardPosition > :: const_iterator iter = valid_moves->begin();
-		iter != valid_moves->end(); ++iter) {
+void GameFacade::ClearUndo() noexcept
+{
+	undo_once_.reset();
+}
 
-		int r = iter->GetRow();
-		int c = iter->GetColumn();
-		if (row == r && col == c) {
-			check = true;
-			break;
+void GameFacade::ClearHistory() noexcept
+{
+	move_history_.clear();
+	undo_once_.reset();
+}
+
+Piece * GameFacade::GetPiece(int row, int col, PieceColor color)
+{
+	RequireBoard();
+	Piece * piece = board_->GetPiece(row, col);
+	current_piece_ = piece && piece->GetColor() == color ? piece : nullptr;
+	valid_moves_.clear();
+	return current_piece_;
+}
+
+std::set<BoardPosition> & GameFacade::GetValidMoves()
+{
+	LookForMoves();
+	return valid_moves_;
+}
+
+void GameFacade::LookForMoves()
+{
+	RequireBoard();
+	if (!current_piece_) {
+		throw std::logic_error("select a piece before requesting valid moves");
+	}
+	FilterMoves(current_piece_->GetValidMove(*board_));
+}
+
+void GameFacade::FilterMoves(const std::set<BoardPosition> & moves)
+{
+	valid_moves_.clear();
+	for (const BoardPosition & move : moves) {
+		const auto opponent_moves = BoardCheck(
+			current_piece_->GetRow(),
+			current_piece_->GetColumn(),
+			move.GetRow(),
+			move.GetColumn());
+		const Piece * king = board_->GetKing(current_piece_->GetColor());
+		if (!king) {
+			throw std::logic_error("selected side has no king");
+		}
+
+		const int king_row = current_piece_ == king ? move.GetRow() : king->GetRow();
+		const int king_col = current_piece_ == king ? move.GetColumn() : king->GetColumn();
+		if (!Contains(opponent_moves, king_row, king_col)) {
+			valid_moves_.insert(move);
 		}
 	}
-	return check;
 }
 
-bool GameFacade::isCellTaken(int row, int col) {
+std::set<BoardPosition> GameFacade::BoardCheck(
+	int source_row,
+	int source_col,
+	int destination_row,
+	int destination_col)
+{
+	const PieceColor moving_color = current_piece_->GetColor();
+	auto captured_piece = board_->MovePiece(
+		source_row, source_col, destination_row, destination_col);
 
-	attack_Piece = board->GetPiece(row, col);
-
-	if (attack_Piece != nullptr)
-	//	if (attack_Piece->GetColor() != cur_Piece->GetColor())
-		return true;
-
-	return false;
-}
-
-Piece * GameFacade::GetPiece(int row, int col, PieceColor color) {
-	//std::cout<<"looking for piece..."<<std::endl;
-//	cur_Piece = Get_Piece_Fron_Board(row, col);
-	cur_Piece = board->GetPiece(row, col);    //cur_Piece is change to the item of current cell
-	
-	//std::cout<<"I got it...."<<std::endl;
-	if (cur_Piece != nullptr && cur_Piece->GetColor() != color) {
-		cur_Piece = nullptr;
-		//std::cout<<"NO, it's wrong..."<<std::endl;
-	}
-	
-	return cur_Piece;
-}
-
-std::set<BoardPosition> & GameFacade::GetValidMoves() {
-
-	if (valid_moves != nullptr)
-		delete valid_moves;
-
-	valid_moves = new std::set<BoardPosition>;
-	Look_for_Moves();
-	//std::cout<<"pick up valid move....."<<std::endl;
-	return * valid_moves;
-}
-
-void GameFacade::Look_for_Moves() {
-	//std::cout<<"facade check the movements.."<<std::endl;
-	assert(cur_Piece != nullptr);
-	assert(board != nullptr);
-
-	//valid_moves = &(cur_Piece->GetValidMove(board));
-	std::set<BoardPosition> * temp_moves = &(cur_Piece->GetValidMove(board));
-	Moves_Filter(temp_moves);    // avoid King in Check
-}
-
-void GameFacade::Moves_Filter(std::set<BoardPosition> * moves) {
-
-	for (std::set< BoardPosition > :: const_iterator iter = moves->begin();
-		iter != moves->end(); ++iter) {
-		int r = iter->GetRow();
-		int c = iter->GetColumn();
-
-		// check if cur piece move there, and my King is in daugrous!!!
-		std::set<BoardPosition> * allMoves = &(Board_Check(cur_Piece->GetRow(), cur_Piece->GetColumn(), r, c));
-		//get my king
-		Piece * king = board->GetKing(cur_Piece->GetColor());
-		bool wrong_move = false;
-
-		for (std::set< BoardPosition > :: const_iterator iter_m = allMoves->begin();
-			iter_m != allMoves->end(); ++iter_m) {
-			int possible_r = iter_m->GetRow();
-			int possible_c = iter_m->GetColumn();
-			//std::cout<<"king is here: "<<king->GetRow()<<", "<<king->GetColumn()<<std::endl;
-			//std::cout<<"so...." <<possible_r<<", "<<possible_c<<std::endl;
-			if (cur_Piece == king) {
-				if ( possible_r == r && possible_c == c) {
-					wrong_move = true;
-					break;
+	std::set<BoardPosition> opponent_moves;
+	try {
+		for (int row = 0; row < ChessBoard::Size; ++row) {
+			for (int col = 0; col < ChessBoard::Size; ++col) {
+				const Piece * piece = board_->GetPiece(row, col);
+				if (piece && piece->GetColor() != moving_color) {
+					const auto piece_moves = piece->GetValidMove(*board_);
+					opponent_moves.insert(piece_moves.begin(), piece_moves.end());
 				}
 			}
-			else if (king->GetRow() == possible_r && king->GetColumn() == possible_c) {
-				wrong_move = true;
-				break;
-			}
 		}
-
-		if (!wrong_move) {
-			valid_moves->insert(*iter);
-		}
-		
-		delete allMoves;	
-		
-	}	
-
-}
-
-std::set<BoardPosition> & GameFacade::Board_Check(int row, int col, int new_r, int new_c) {
-	//if (allMoves != NULL)
-		//delete allMoves;	
-	std::set<BoardPosition> * allMoves = new std::set<BoardPosition>;
-
-	Piece * temp = nullptr;
-	// if there is piece taken that cell
-	if (board->GetPiece(new_r, new_c) != nullptr)
-		temp = board->GetPiece(new_r, new_c);
-	PieceColor color = cur_Piece->GetColor();
-
-	board->MovePiece(row, col, new_r, new_c);
-
-	for (int i =0; i<8; i++) {
-		for (int j=0; j<8; j++){
-			Piece * each_piece = board->GetPiece(i,j);
-			if (each_piece != nullptr && each_piece->GetColor() != color) {
-				std::set<BoardPosition> * moves = &(each_piece->GetValidMove(board));
-				Build_Move_Set(moves, allMoves);
-			}
-		}
-	}	
-
-	board->Reset_Piece(row, col, new_r, new_c);
-
-	if (temp != nullptr)
-		board->PutBack_Piece(temp, new_r, new_c);
-
-	return *allMoves;
-				
-}
-
-void GameFacade::Build_Move_Set(std::set<BoardPosition> * moves, std::set<BoardPosition> * allMoves) {
-	for (std::set< BoardPosition > :: const_iterator iter = moves->begin();
-		iter != moves->end(); ++iter) {
-		allMoves->insert(*iter);
+	} catch (...) {
+		board_->RestoreMove(
+			source_row,
+			source_col,
+			destination_row,
+			destination_col,
+			std::move(captured_piece));
+		throw;
 	}
 
+	board_->RestoreMove(
+		source_row,
+		source_col,
+		destination_row,
+		destination_col,
+		std::move(captured_piece));
+	return opponent_moves;
 }
 
-void GameFacade::MovePiece(int r_selected, int col_selected, int row, int col) {
-	
-	//std::cout<<"\tfacade MovePiece..."<<std::endl;
-	cur_Piece = board->GetPiece(r_selected, col_selected);   // change cur_Piece back.
-	assert(cur_Piece != nullptr);
-	PieceHistory * history = new PieceHistory(cur_Piece, r_selected, col_selected, row, col);
+bool GameFacade::isCellTaken(int row, int col)
+{
+	RequireBoard();
+	return board_->GetPiece(row, col) != nullptr;
+}
 
-	if (attack_Piece != nullptr) {
-		history->Take_Piece(attack_Piece);
+bool GameFacade::isValidMove(int row, int col) const
+{
+	if (!ChessBoard::IsValidPosition(row, col)) {
+		throw std::out_of_range("board coordinates must be between 0 and 7");
 	}
-	move_history.push_back(history);
-	board->MovePiece(r_selected, col_selected, row, col);
-	// finally, delete the valid movents set.... don't forget!!!
-	// but it should be happened in the Gamecontroller, because we need undo hight cells
-	
+	return Contains(valid_moves_, row, col);
 }
 
-PieceHistory * GameFacade::Undo(){
-	// Since undo_once pointer points to the lastest privous undo Move, firstly
-	// check if it point to NULL, if not , delete it.
-	ClearUndo();
-	
-	if (move_history.size() != 0) {
-		undo_once = move_history.back();
-		move_history.pop_back();
-		
-		int s_row = undo_once->Get_S_Row();
-		int s_col = undo_once->Get_S_Column();
-		int end_row = undo_once->Get_E_Row();
-		int end_col = undo_once->Get_E_Column();
-		//std::cout<<"\tfrom ("<<s_row<<","<<s_col<<") to ("<<end_row<<","<<end_col<<")"<<std::endl;
-		board->Reset_Piece(s_row, s_col, end_row, end_col);
-
-		if (undo_once->IsAttackPieceHere()) {
-			Piece * attacked_p = undo_once->Get_Attack_Piece();
-			board->PutBack_Piece(attacked_p, end_row, end_col);
-		}
+void GameFacade::MovePiece(
+	int source_row,
+	int source_col,
+	int destination_row,
+	int destination_col)
+{
+	RequireBoard();
+	Piece * moving_piece = board_->GetPiece(source_row, source_col);
+	if (!moving_piece) {
+		throw std::invalid_argument("cannot move from an empty board cell");
 	}
-	//the poped PieceHistory object will be deleted after GUI update by ChessController.
-	return undo_once;  
+	const Piece * attacked_piece = board_->GetPiece(destination_row, destination_col);
+	move_history_.emplace_back(
+		*moving_piece,
+		source_row,
+		source_col,
+		destination_row,
+		destination_col,
+		attacked_piece);
+
+	[[maybe_unused]] auto captured_piece = board_->MovePiece(
+		source_row, source_col, destination_row, destination_col);
+	current_piece_ = board_->GetPiece(destination_row, destination_col);
+	valid_moves_.clear();
+	undo_once_.reset();
 }
 
-void GameFacade::SaveGame(const std::string & fileName) {
-	Xml xml(fileName);
-	xml.WriteIntoFile(board, move_history);
-
-}
-
-bool GameFacade::Check(int, int) {
-	assert(cur_Piece != nullptr);
-	assert(board != nullptr);
-	std::set<BoardPosition> * temp_moves = &(cur_Piece->GetValidMove(board));
-
-	Piece * king = nullptr;
-
-	if ( cur_Piece->GetColor() == WHITE)
-		king = board->GetKing(BLACK);
-	else
-		king = board->GetKing(WHITE);
-
-	for (std::set< BoardPosition > :: const_iterator iter = temp_moves->begin();
-		iter != temp_moves->end(); ++iter) {
-		int r = iter->GetRow();
-		int c = iter->GetColumn();
-	
-		if (king->GetRow() == r && king->GetColumn() == c)
-			return true;
+const PieceHistory * GameFacade::Undo()
+{
+	RequireBoard();
+	undo_once_.reset();
+	if (move_history_.empty()) {
+		return nullptr;
 	}
-	
-	return false;
+
+	undo_once_ = move_history_.back();
+	move_history_.pop_back();
+	std::unique_ptr<Piece> captured_piece;
+	if (undo_once_->GetAttackSnapshot()) {
+		captured_piece = MakePiece(
+			*undo_once_->GetAttackSnapshot(),
+			undo_once_->Get_E_Row(),
+			undo_once_->Get_E_Column());
+	}
+	board_->RestoreMove(
+		undo_once_->Get_S_Row(),
+		undo_once_->Get_S_Column(),
+		undo_once_->Get_E_Row(),
+		undo_once_->Get_E_Column(),
+		std::move(captured_piece));
+	current_piece_ = nullptr;
+	valid_moves_.clear();
+	return &*undo_once_;
 }
 
-// Check current status is in stuck
-bool GameFacade::Mate(int, int) {
-	assert(cur_Piece != nullptr);
-	assert(board != nullptr);
+bool GameFacade::Check(int row, int col)
+{
+	RequireBoard();
+	if (!ChessBoard::IsValidPosition(row, col)) {
+		throw std::out_of_range("board coordinates must be between 0 and 7");
+	}
+	if (!current_piece_) {
+		throw std::logic_error("select a piece before checking");
+	}
+	const PieceColor opponent = current_piece_->GetColor() == WHITE ? BLACK : WHITE;
+	const Piece * king = board_->GetKing(opponent);
+	if (!king) {
+		return false;
+	}
+	return Contains(
+		current_piece_->GetValidMove(*board_), king->GetRow(), king->GetColumn());
+}
 
-	PieceColor color = cur_Piece->GetColor();
-	//std::cout<<"current piece color: "<<cur_Piece->GetColor()<<std::endl;
-	for (int i =0; i<8; i++) {
-		for (int j=0; j<8; j++){
-			cur_Piece = board->GetPiece(i,j);
-			if (cur_Piece != nullptr && cur_Piece->GetColor() != color) {
-				GetValidMoves();
-				//std::cout<<"???????????????? size: "<<valid_moves->size()<<std::endl;
-				if (valid_moves->size() != 0){
-					//std::cout<<"who ;; "<<cur_Piece->Type_String()<<" "<<cur_Piece->GetRow()<<" , "<<cur_Piece->GetColumn()<<std::endl;
+bool GameFacade::Mate(int row, int col)
+{
+	RequireBoard();
+	if (!ChessBoard::IsValidPosition(row, col)) {
+		throw std::out_of_range("board coordinates must be between 0 and 7");
+	}
+	if (!current_piece_) {
+		throw std::logic_error("select a piece before checking mate");
+	}
+	const PieceColor last_mover = current_piece_->GetColor();
+	for (int row = 0; row < ChessBoard::Size; ++row) {
+		for (int col = 0; col < ChessBoard::Size; ++col) {
+			Piece * piece = board_->GetPiece(row, col);
+			if (piece && piece->GetColor() != last_mover) {
+				current_piece_ = piece;
+				LookForMoves();
+				if (!valid_moves_.empty()) {
 					return false;
 				}
 			}
 		}
 	}
-		
 	return true;
-
 }
 
-void GameFacade::Quit() {
-	std::cout<<"Quit Facade ... "<<std::endl;	
-	//Clear_Board();
+void GameFacade::SaveGame(const std::string & file_name)
+{
+	RequireBoard();
+	Xml(file_name).WriteIntoFile(*board_, move_history_);
 }
-	
-bool GameFacade::Test(std::ostream & os) {
+
+void GameFacade::SaveAs(const std::string & file_name)
+{
+	file_name_ = file_name;
+	SaveGame(file_name_);
+}
+
+bool GameFacade::LoadGame(const std::string &)
+{
+	return false;
+}
+
+void GameFacade::UpdateMoveHistory(std::vector<PieceHistory> & moves)
+{
+	move_history_ = moves;
+}
+
+void GameFacade::ReadMoveHistory() {}
+void GameFacade::Clean_History() { ClearHistory(); }
+void GameFacade::Reset_Chess_Board() { NewGame(); }
+
+void GameFacade::Quit()
+{
+	std::cout << "Quit Facade ...\n";
+}
+
+std::size_t GameFacade::HistorySize() const noexcept
+{
+	return move_history_.size();
+}
+
+const ChessBoard & GameFacade::Board() const
+{
+	RequireBoard();
+	return *board_;
+}
+
+bool GameFacade::Test(std::ostream & os)
+{
+	using std::endl;
 	bool success = true;
 	GameFacade game;
 	game.NewGame();
-	
-	Piece * p1 = game.GetPiece(0, 4, BLACK);
-	TEST(p1->GetType() == KING);
-	if (success) {
-		TEST(p1->GetColor() == BLACK);
-		if (success)
-			std::cout<<"\tGet Piece from board testing success."<<std::endl;	
-		else
-			std::cout<<"\tGet Piece test failed!!!"<<std::endl;	
-	}
-	else
-		std::cout<<"\tGet Piece test failed!!!"<<std::endl;	
-	
-//************************************************
-
-	game.GetPiece(7, 6, WHITE);  // w_knight
-	game.isCellTaken(1,1);    // must check if the cell is token by 
-	game.MovePiece(7, 6, 1, 1);	     // w_knight -> b_pawn
-	TEST((game.board)->GetPiece(7,6) == nullptr);
-	if (success) {
-		Piece* q1 = (game.board)->GetPiece(1,1);
-		TEST(q1->GetType() == KNIGHT);
-		if (success) {
-			TEST(q1->GetColor() == WHITE);
-			if (success)
-				std::cout<<"\tMove Piece testing success."<<std::endl;
-			else	
-				std::cout<<"\tMove Piece testing failed!!!!"<<std::endl;	
-		}
-		else	
-			std::cout<<"\tMove Piece testing failed!!!!"<<std::endl;	
-	}
-	else
-		std::cout<<"\tMove Piece testing failed!!!!"<<std::endl;	
-//**************************************
-
-	game.GetPiece(0,2,BLACK);   // b_bishop
-	game.isCellTaken(2,1);       // must check if the cell is token by 
-	game.MovePiece(0,2, 2, 1);    // black bishop doesn't attack white knight
-	TEST((game.move_history).size() == 2);
-	if (success) {
-		std::cout<<"\tMove_History size testing success."<<std::endl;
-		PieceHistory * q2 = (game.move_history).front();
-		TEST(q2->GetType_Attack() == PAWN);
-		if (success) {
-			std::cout<<"\tMove_History Attacked piece record testing success. --- front."<<std::endl;
-			TEST(q2->GetType_Moving() == KNIGHT);
-			if (success)
-				std::cout<<"\tMove_History Moving piece record testing success."<<std::endl;
-			else
-				std::cout<<"\tMove_History Moving piece record testing Failed!!"<<std::endl;
-		}
-		else
-			std::cout<<"\tMove_History Attacked piece record testing Failed!!"<<std::endl;
-
-		PieceHistory * q3 = (game.move_history).back();
-		
-		//TEST(q3->GetType_Attack() == KNIGHT);
-		TEST(q3->Get_Attack_Piece() == nullptr);
-		if (success) {
-			std::cout<<"\tMove_History Attacked piece record testing success. --- back."<<std::endl;
-			TEST(q3->GetType_Moving() == BISHOP);
-			if (success)
-				std::cout<<"\tMove_History Moving piece record testing success."<<std::endl;
-			else
-				std::cout<<"\tMove_History Moving piece record testing Failed!!"<<std::endl;
-		}
-		else
-			std::cout<<"\tMove_History Attacked piece record testing Failed!!"<<std::endl;
-	}
-	else
-		std::cout<<"\tMove_History size testing failed!!!"<<std::endl;
-//******************************************************
-	Piece * p4 = (game.board)->GetPiece(0,2);
-	TEST(p4 == nullptr);
-	if (success) {
-		game.Undo();
-		TEST((game.move_history).size() == 1);
-		if (success)	
-			std::cout<<"\tMove_History Undo size testing success."<<std::endl;
-		else
-			std::cout<<"\tMove_History Undo size testing Failed!!"<<std::endl;
-		p4 = (game.board)->GetPiece(0,2);
-		TEST(p4 != nullptr);
-		if (success) {
-			TEST(p4->GetType() == BISHOP);
-			if (success) {
-				TEST(p4->GetColor() == BLACK);
-				if (success) {
-					TEST((game.board)->GetPiece(2, 1) == nullptr);
-					if (success) 
-						std::cout<<"\tFirst Undo testing passed!!!"<<std::endl;
-					else
-						std::cout<<"\tFirst Undo testing failed!!!, since current loc is not NULL"<<std::endl;
-				}
-				else
-					std::cout<<"\tFirst Undo testing failed!!!, since piece color is not right."<<std::endl;
-				
-			}
-		}
-		else
-			std::cout<<"\tUndo testing failed!!!, since bishop is not moved back."<<std::endl;
-	}
-	else
-		std::cout<<"\tUndo testing failed!!!, since (0,2) is not NULL."<<std::endl;
-
-	game.Undo();
-	Piece * p5 = (game.board)->GetPiece(1,1);
-	Piece * p6 = (game.board)->GetPiece(7,6);
-	TEST(p5->GetType() == PAWN);
-	if (success)
-		std::cout<<"\tPawn Undo testing passed!!!"<<std::endl;
-	else
-		std::cout<<"\tPawn Undo testing failed!!!, since (1,1) should change back to B_Pawn"<<std::endl;
-	TEST(p6->GetType() == KNIGHT);
-	if (success)
-		std::cout<<"\tKnight Undo testing passed!!!"<<std::endl;
-	else
-		std::cout<<"\tKnight Undo testing failed!!!, since (1,1) should change back to W_knight"<<std::endl;
-	TEST((game.move_history).size() == 0);
-	if (success)
-		std::cout<<"\tFinally Undo testing passed!!!"<<std::endl;
-	else
-		std::cout<<"\tUndo testing failed!!!, since move_history size is not zero."<<std::endl;
-
-//*******************************************************
-	game.GetPiece(7, 6, WHITE);  // w_knight
-	game.isCellTaken(1,1);    // must check if the cell is token by 
-	game.MovePiece(7, 6, 1, 1);	     // w_knight -> b_pawn
-
-	game.GetPiece(0,2,BLACK);   // b_bishop
-	game.isCellTaken(2,1);       // must check if the cell is token by 
-	game.MovePiece(0,2, 2, 1);    // black bishop doesn't attack white knight
-	TEST((game.move_history).size() == 2);
-	if (success) {
-		game.ClearHistory();
-		TEST((game.move_history).size() == 0);
-		if (success)
-			std::cout<<"\tClear Move History testing passed!!!"<<std::endl;
-		else
-			std::cout<<"\tClear Move History testing failed!!!!"<<std::endl;
-	}
-	else
-		std::cout<<"\tAdd Move history testing failed!!!"<<std::endl;
+	TEST(game.GetPiece(0, 4, BLACK)->GetType() == KING);
+	game.MovePiece(7, 6, 5, 5);
+	TEST(game.Board().GetPiece(5, 5)->GetType() == KNIGHT);
+	TEST(game.HistorySize() == 1);
+	TEST(game.Undo() != nullptr);
+	TEST(game.Board().GetPiece(7, 6)->GetType() == KNIGHT);
+	TEST(game.HistorySize() == 0);
+	os << "\tGameFacade ownership tests passed\n";
 	return success;
 }

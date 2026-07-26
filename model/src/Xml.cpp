@@ -1,69 +1,85 @@
 #include "Xml.h"
 
+#include <stdexcept>
 
-void Xml::WriteIntoFile(ChessBoard * board, std::vector<PieceHistory* > & history) {
-	std::ofstream file(file_name.c_str());
+namespace {
 
-	if (!file.is_open())
-		std::cout<<"open fail!!!"<<std::endl;
-
-	file <<"-<chessgame>\n";
-
-	WriteBoard(file, board);
-	WriteHistory(file, history);
-
-	file <<" </chessgame>\n";
-
-	file.close();
+std::string TypeString(PieceType type)
+{
+	switch (type) {
+	case KING: return "king";
+	case QUEEN: return "queen";
+	case KNIGHT: return "knight";
+	case BISHOP: return "bishop";
+	case ROOK: return "rook";
+	case PAWN: return "pawn";
+	}
+	throw std::logic_error("unknown piece type");
 }
 
-void Xml::WriteBoard(std::ofstream & file, ChessBoard * board) {
-	file <<" -<board>\n";
-	for (int i=0; i<8; i++) {
-		for (int j=0; j<8; j++) {
-			Piece * temp = board->GetPiece(i, j);
-			if (temp != nullptr) {
-				std::string type = temp->Type_String();
-				std::string color = temp->Color_String();
-				file <<"   <piece type=\""<<type<<"\" color=\""<<color<<"\" column=\""<<j<<"\" row=\""<<i<<"\" />"<<std::endl;	
+std::string ColorString(PieceColor color)
+{
+	return color == WHITE ? "white" : "black";
+}
+
+} // namespace
+
+void Xml::WriteIntoFile(
+	const ChessBoard & board,
+	const std::vector<PieceHistory> & history)
+{
+	std::ofstream file(file_name);
+	if (!file.is_open()) {
+		std::cout << "open fail!!!\n";
+	}
+
+	file << "-<chessgame>\n";
+	WriteBoard(file, board);
+	WriteHistory(file, history);
+	file << " </chessgame>\n";
+}
+
+void Xml::WriteBoard(std::ofstream & file, const ChessBoard & board)
+{
+	file << " -<board>\n";
+	for (int row = 0; row < ChessBoard::Size; ++row) {
+		for (int col = 0; col < ChessBoard::Size; ++col) {
+			const Piece * piece = board.GetPiece(row, col);
+			if (piece) {
+				file << "   <piece type=\"" << piece->Type_String()
+					 << "\" color=\"" << piece->Color_String()
+					 << "\" column=\"" << col << "\" row=\"" << row
+					 << "\" />\n";
 			}
 		}
 	}
-
-	file <<"  </board>\n";	
+	file << "  </board>\n";
 }
 
+void Xml::WriteHistory(
+	std::ofstream & file,
+	const std::vector<PieceHistory> & history)
+{
+	file << " -<history>\n";
+	for (const PieceHistory & move : history) {
+		const auto & moving = move.GetMovingSnapshot();
+		file << "   <move>\n"
+			 << "       <piece type=\"" << TypeString(moving.type)
+			 << "\" color=\"" << ColorString(moving.color)
+			 << "\" column=\"" << move.Get_S_Column()
+			 << "\" row=\"" << move.Get_S_Row() << "\" />\n"
+			 << "       <piece type=\"" << TypeString(moving.type)
+			 << "\" color=\"" << ColorString(moving.color)
+			 << "\" column=\"" << move.Get_E_Column()
+			 << "\" row=\"" << move.Get_E_Row() << "\" />\n";
 
-void Xml::WriteHistory(std::ofstream & file, std::vector<PieceHistory *> & history){
-	PieceHistory * temp = nullptr;
-	Piece * piece = nullptr;
-
-	file <<" -<history>\n";
-	for (std::size_t i = 0; i < history.size(); i++) {
-		temp = history.at(i);
-		piece = temp->Get_Moving_Piece();
-
-		std::string type = piece->Type_String();
-		std::string color = piece->Color_String();
-		int s_row = temp->Get_S_Row();
-		int s_col = temp->Get_S_Column();
-		int e_row = temp->Get_E_Row();
-		int e_col = temp->Get_E_Column();
-		file <<"   <move>"<<std::endl;
-		file <<"       <piece type=\""<<type<<"\" color=\""<<color<<"\" column=\""<<s_col<<"\" row=\""<<s_row<<"\" />"<<std::endl;	
-		file <<"       <piece type=\""<<type<<"\" color=\""<<color<<"\" column=\""<<e_col<<"\" row=\""<<e_row<<"\" />"<<std::endl;	
-
-		if (temp->IsAttackPieceHere()) {
-			piece = temp->Get_Attack_Piece();
-			std::string a_type = piece->Type_String();
-			std::string a_color = piece->Color_String();
-			file <<"       <piece type=\""<<a_type<<"\" color=\""<<a_color<<"\" column=\""<<e_col<<"\" row=\""<<e_row<<"\" />"<<std::endl;	
+		if (const auto & attacked = move.GetAttackSnapshot()) {
+			file << "       <piece type=\"" << TypeString(attacked->type)
+				 << "\" color=\"" << ColorString(attacked->color)
+				 << "\" column=\"" << move.Get_E_Column()
+				 << "\" row=\"" << move.Get_E_Row() << "\" />\n";
 		}
-
-		file <<"   </move>"<<std::endl;				
-	}	
-
-	file <<"  </history>\n";	
+		file << "   </move>\n";
+	}
+	file << "  </history>\n";
 }
-
-

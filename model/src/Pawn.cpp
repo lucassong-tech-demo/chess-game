@@ -1,81 +1,32 @@
 #include "Pawn.h"
+
 #include "ChessBoard.h"
 
-std::set<BoardPosition> & Pawn::GetValidMove(ChessBoard * board) {
-	
-	if (movements != nullptr)
-		delete movements;
+std::set<BoardPosition> Pawn::GetValidMove(const ChessBoard & board) const
+{
+	std::set<BoardPosition> moves;
+	const int direction = color == WHITE ? -1 : 1;
+	const int next_row = row + direction;
 
-	movements = new std::set<BoardPosition>;
-	Forward(board);
-	Forward_left(board);
-	Forward_right(board);
-	return *movements;
+	if (ChessBoard::IsValidPosition(next_row, column)
+		&& board.GetPiece(next_row, column) == nullptr) {
+		moves.emplace(next_row, column);
+		const int start_row = color == WHITE ? 6 : 1;
+		const int two_steps = row + (2 * direction);
+		if (row == start_row && board.GetPiece(two_steps, column) == nullptr) {
+			moves.emplace(two_steps, column);
+		}
+	}
 
+	for (const int col_offset : {-1, 1}) {
+		const int capture_col = column + col_offset;
+		if (!ChessBoard::IsValidPosition(next_row, capture_col)) {
+			continue;
+		}
+		const Piece * target = board.GetPiece(next_row, capture_col);
+		if (target && target->GetColor() != color) {
+			moves.emplace(next_row, capture_col);
+		}
+	}
+	return moves;
 }
-
-void Pawn::Forward(ChessBoard * board) {
-	if (color == WHITE) {
-		Piece * piece1 = board->GetPiece(row-1, column);
-		if ( piece1 == nullptr) {
-			BoardPosition bp1(row-1, column);
-			movements->insert(bp1);
-			if (row == 6) {
-				Piece * piece2 = board->GetPiece(row-2, column);
-				if (piece2 == nullptr) {
-					BoardPosition bp2(row-2, column);
-					movements->insert(bp2);
-				}
-			}
-		}
-	}
-	else {
-		Piece * piece1 = board->GetPiece(row+1, column);
-		if ( piece1 == nullptr) {
-			BoardPosition bp1(row+1, column);
-			movements->insert(bp1);
-			if (row == 1) {
-				Piece * piece2 = board->GetPiece(row+2, column);
-				if (piece2 == nullptr) {
-					BoardPosition bp2(row+2, column);
-					movements->insert(bp2);
-				}
-			}
-		}
-	}
-}
-
-void Pawn::Forward_left(ChessBoard * board) {
-	if (color == WHITE) {
-		Piece * piece1 = board->GetPiece(row-1, column-1);
-		if ( piece1 != nullptr && piece1->GetColor() != color) {
-			BoardPosition bp1(row-1, column-1);
-			movements->insert(bp1);
-		}
-	}
-	else {
-		Piece * piece1 = board->GetPiece(row+1, column+1);
-		if ( piece1 != nullptr && piece1->GetColor() != color) {
-			BoardPosition bp1(row+1, column+1);
-			movements->insert(bp1);
-		}
-	}
-}
-
-void Pawn::Forward_right(ChessBoard * board) {
-	if (color == WHITE) {
-		Piece * piece1 = board->GetPiece(row-1, column+1);
-		if ( piece1 != nullptr && piece1->GetColor() != color) {
-			BoardPosition bp1(row-1, column+1);
-			movements->insert(bp1);
-		}
-	}
-	else {
-		Piece * piece1 = board->GetPiece(row+1, column-1);
-		if ( piece1 != nullptr && piece1->GetColor() != color) {
-			BoardPosition bp1(row+1, column-1);
-			movements->insert(bp1);
-		}
-	}
-}
-

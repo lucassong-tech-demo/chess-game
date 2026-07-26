@@ -32,21 +32,21 @@ public:
 	 * @param board a pointer which points to the current chess board.
 	 * @throw if the file cannot be open successfully, throw exception.
 	 */
-	void WriteIntoFile(ChessBoard * board, std::vector<PieceHistory* > & history);
+	void WriteIntoFile(const ChessBoard & board, const std::vector<PieceHistory> & history);
 
 	/**
 	 * Read the history stack. write all data into the .xml file.
 	 * @param file the opened file
 	 * @param history a reference of stack history
 	 */
-	void WriteHistory(std::ofstream & file, vector<PieceHistory *> & history);
+	void WriteHistory(std::ofstream & file, const std::vector<PieceHistory> & history);
 
 	/**
 	 * Read the chess board, get each piece and learn the type, color, and location. Write them into file
 	 * @param file the opened .xml file.
 	 * @param board a pointer points to the chess board, using it to get each piece.
 	 */
-	void WriteBoard(std::ofstream & file, ChessBoard * board);
+	void WriteBoard(std::ofstream & file, const ChessBoard & board);
 	
 	/**
 	 * read the xml file and rebuild the board and history stack.
@@ -68,5 +68,4 @@ public:
 };
 
 #endif
-
 

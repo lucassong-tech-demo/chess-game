@@ -1,233 +1,191 @@
 #include "ChessBoard.h"
 
+#include <stdexcept>
+#include <utility>
 
-ChessBoard::ChessBoard() {
-	
-	w_King = nullptr;
-	b_King = nullptr;
-	allMoves = nullptr;
-	
-	Init_Board();
-	Init_White_Piece();
-	Init_Black_Piece();
+#include "Bishop.h"
+#include "King.h"
+#include "Knight.h"
+#include "Pawn.h"
+#include "Queen.h"
+#include "Rook.h"
+#include "UnitTest.h"
 
+namespace {
+
+std::unique_ptr<Piece> MakePiece(PieceType type, PieceColor color, int row, int col)
+{
+	switch (type) {
+	case KING: return std::make_unique<King>(type, color, row, col);
+	case QUEEN: return std::make_unique<Queen>(type, color, row, col);
+	case KNIGHT: return std::make_unique<Knight>(type, color, row, col);
+	case BISHOP: return std::make_unique<Bishop>(type, color, row, col);
+	case ROOK: return std::make_unique<Rook>(type, color, row, col);
+	case PAWN: return std::make_unique<Pawn>(type, color, row, col);
+	}
+	throw std::invalid_argument("unknown piece type");
 }
 
+} // namespace
 
-ChessBoard::~ChessBoard() {
+ChessBoard::ChessBoard()
+{
+	InitializePieces();
+}
 
+bool ChessBoard::IsValidPosition(int row, int col) noexcept
+{
+	return row >= 0 && row < Size && col >= 0 && col < Size;
+}
+
+void ChessBoard::ValidatePosition(int row, int col)
+{
+	if (!IsValidPosition(row, col)) {
+		throw std::out_of_range("board coordinates must be between 0 and 7");
+	}
+}
+
+void ChessBoard::ClearBoard() noexcept
+{
+	for (auto & board_row : board_) {
+		for (auto & piece : board_row) {
+			piece.reset();
+		}
+	}
+}
+
+void ChessBoard::Reset()
+{
 	ClearBoard();
-
-	w_King = nullptr;
-	b_King = nullptr;
-
-	if (allMoves != nullptr)
-		delete allMoves;	
+	InitializePieces();
 }
 
-void ChessBoard::ClearBoard() {
+void ChessBoard::InitializePieces()
+{
+	constexpr std::array<PieceType, Size> back_rank{
+		ROOK, KNIGHT, BISHOP, QUEEN, KING, BISHOP, KNIGHT, ROOK
+	};
 
-	for (int i = 0; i < 8; i++) {
-		for (int j = 0; j < 8; j++) {
+	for (int col = 0; col < Size; ++col) {
+		board_[0][col] = MakePiece(back_rank[col], BLACK, 0, col);
+		board_[1][col] = MakePiece(PAWN, BLACK, 1, col);
+		board_[6][col] = MakePiece(PAWN, WHITE, 6, col);
+		board_[7][col] = MakePiece(back_rank[col], WHITE, 7, col);
+	}
+}
 
-			if (board[i][j] != nullptr) {
+Piece * ChessBoard::GetPiece(int row, int col)
+{
+	return const_cast<Piece *>(std::as_const(*this).GetPiece(row, col));
+}
 
-				delete board[i][j];
-				board[i][j] = nullptr;
+const Piece * ChessBoard::GetPiece(int row, int col) const
+{
+	ValidatePosition(row, col);
+	return board_[row][col].get();
+}
+
+Piece * ChessBoard::GetKing(PieceColor color)
+{
+	return const_cast<Piece *>(std::as_const(*this).GetKing(color));
+}
+
+const Piece * ChessBoard::GetKing(PieceColor color) const
+{
+	for (const auto & board_row : board_) {
+		for (const auto & piece : board_row) {
+			if (piece && piece->GetType() == KING && piece->GetColor() == color) {
+				return piece.get();
 			}
 		}
 	}
+	return nullptr;
 }
 
-void ChessBoard::Init_Board() {
-
-	for (int i = 0; i < 8; i++) {
-		for (int j = 0; j < 8; j++) {
-			board[i][j] = nullptr;
-		}
+std::unique_ptr<Piece> ChessBoard::MovePiece(
+	int source_row,
+	int source_col,
+	int destination_row,
+	int destination_col)
+{
+	ValidatePosition(source_row, source_col);
+	ValidatePosition(destination_row, destination_col);
+	if (source_row == destination_row && source_col == destination_col) {
+		throw std::invalid_argument("source and destination must differ");
 	}
+	auto & source = board_[source_row][source_col];
+	if (!source) {
+		throw std::invalid_argument("cannot move from an empty board cell");
+	}
+
+	auto captured_piece = std::move(board_[destination_row][destination_col]);
+	board_[destination_row][destination_col] = std::move(source);
+	board_[destination_row][destination_col]->Update_location(destination_row, destination_col);
+	return captured_piece;
 }
 
-void ChessBoard::Init_White_Piece() {
-	board[6][0] = new Pawn(PAWN, WHITE, 6, 0); 
-	board[6][1] = new Pawn(PAWN, WHITE, 6, 1); 
-	board[6][2] = new Pawn(PAWN, WHITE, 6, 2); 
-	board[6][3] = new Pawn(PAWN, WHITE, 6, 3); 
-	board[6][4] = new Pawn(PAWN, WHITE, 6, 4); 
-	board[6][5] = new Pawn(PAWN, WHITE, 6, 5); 
-	board[6][6] = new Pawn(PAWN, WHITE, 6, 6); 
-	board[6][7] = new Pawn(PAWN, WHITE, 6, 7); 
-	board[7][0] = new Rook(ROOK, WHITE, 7, 0); 
-	board[7][1] = new Knight(KNIGHT, WHITE, 7, 1); 
-	board[7][2] = new Bishop(BISHOP, WHITE, 7, 2); 
-	board[7][3] = new Queen(QUEEN, WHITE, 7, 3); 
-	board[7][4] = new King(KING, WHITE, 7, 4); 
-	board[7][5] = new Bishop(BISHOP, WHITE, 7, 5); 
-	board[7][6] = new Knight(KNIGHT, WHITE, 7, 6); 
-	board[7][7] = new Rook(ROOK, WHITE, 7, 7); 
-	w_King = board[7][4];
+void ChessBoard::RestoreMove(
+	int source_row,
+	int source_col,
+	int destination_row,
+	int destination_col,
+	std::unique_ptr<Piece> captured_piece)
+{
+	ValidatePosition(source_row, source_col);
+	ValidatePosition(destination_row, destination_col);
+	if (source_row == destination_row && source_col == destination_col) {
+		throw std::invalid_argument("source and destination must differ");
+	}
+	auto & destination = board_[destination_row][destination_col];
+	if (!destination) {
+		throw std::invalid_argument("cannot restore a move from an empty destination");
+	}
+	if (board_[source_row][source_col]) {
+		throw std::invalid_argument("cannot restore a move onto an occupied source");
+	}
+
+	board_[source_row][source_col] = std::move(destination);
+	board_[source_row][source_col]->Update_location(source_row, source_col);
+	if (captured_piece) {
+		captured_piece->Update_location(destination_row, destination_col);
+	}
+	destination = std::move(captured_piece);
 }
 
-void ChessBoard::Init_Black_Piece() {
-
-	board[0][0] = new Rook(ROOK, BLACK, 0, 0); 
-	board[0][1] = new Knight(KNIGHT, BLACK, 0, 1); 
-	board[0][2] = new Bishop(BISHOP, BLACK, 0, 2); 
-	board[0][3] = new Queen(QUEEN, BLACK, 0, 3); 
-	board[0][4] = new King(KING, BLACK, 0, 4); 
-	board[0][5] = new Bishop(BISHOP, BLACK, 0, 5); 
-	board[0][6] = new Knight(KNIGHT, BLACK, 0, 6); 
-	board[0][7] = new Rook(ROOK, BLACK, 0, 7); 
-	board[1][0] = new Pawn(PAWN, BLACK, 1, 0); 
-	board[1][1] = new Pawn(PAWN, BLACK, 1, 1); 
-	board[1][2] = new Pawn(PAWN, BLACK, 1, 2); 
-	board[1][3] = new Pawn(PAWN, BLACK, 1, 3); 
-	board[1][4] = new Pawn(PAWN, BLACK, 1, 4); 
-	board[1][5] = new Pawn(PAWN, BLACK, 1, 5); 
-	board[1][6] = new Pawn(PAWN, BLACK, 1, 6); 
-	board[1][7] = new Pawn(PAWN, BLACK, 1, 7); 
-	b_King = board[0][4];
+void ChessBoard::PutPiece(std::unique_ptr<Piece> piece, int row, int col)
+{
+	ValidatePosition(row, col);
+	if (!piece) {
+		throw std::invalid_argument("cannot put a null piece on the board");
+	}
+	piece->Update_location(row, col);
+	board_[row][col] = std::move(piece);
 }
 
-Piece* ChessBoard::GetPiece(int row, int col) const {
-
-	return board[row][col];
-}
-
-void ChessBoard::MovePiece(int r_selected, int c_selected, int row, int col) {
-
-	board[row][col] = board[r_selected][c_selected];
-	board[r_selected][c_selected] = nullptr;
-	(board[row][col])->Update_location(row, col);
-}
-
-void ChessBoard::Reset_Piece (const int s_row, const int s_col, const int end_r, const int end_col) {
-
-	board[s_row][s_col] = board[end_r][end_col];
-	board[end_r][end_col] = nullptr;
-	(board[s_row][s_col])->Update_location(s_row, s_col);
-}
-
-void ChessBoard::PutBack_Piece(Piece* piece, const int row, const int col) {
-	
-	assert(piece != nullptr);
-	board[row][col] = piece;
-}
-
-Piece * ChessBoard::GetKing(PieceColor color) {
-	
-	if (color == WHITE)
-		return Get_W_King();
-	else
-		return Get_B_King();
-}
-
-
-
-Piece * ChessBoard::Get_W_King() {
-	return w_King;
-}
-
-Piece * ChessBoard::Get_B_King() {
-	return b_King;
-}
-
-bool ChessBoard::Test(std::ostream & os) {
+bool ChessBoard::Test(std::ostream & os)
+{
+	using std::endl;
 	bool success = true;
-	ChessBoard cb;
+	ChessBoard board;
+	TEST(board.GetPiece(1, 0)->GetType() == PAWN);
+	TEST(board.GetPiece(1, 0)->GetColor() == BLACK);
+	TEST(board.GetPiece(2, 1) == nullptr);
 
-	Piece* p = cb.GetPiece(1,0);
-	TEST(p->GetType() == PAWN);
-	if (success) {
-		TEST(p->GetColor() == BLACK);
-		if (success)
-			std::cout<<"\tPiece testing success"<<std::endl;
-	}
-	else
-		std::cout<<"\tPiece testing -- fail"<<std::endl;
-	
-	p = cb.GetPiece(2,1);
-	TEST(p == nullptr);
-	if (success)
-		std::cout<<"\tChess board testing success"<<std::endl;
-	else
-		std::cout<<"\tChess board testing -- failed!"<<std::endl;
+	auto captured = board.MovePiece(1, 0, 2, 1);
+	TEST(captured == nullptr);
+	TEST(board.GetPiece(1, 0) == nullptr);
+	TEST(board.GetPiece(2, 1)->GetType() == PAWN);
 
-//************************************
+	captured = board.MovePiece(0, 1, 2, 1);
+	TEST(captured != nullptr);
+	TEST(captured->GetType() == PAWN);
+	TEST(board.GetPiece(2, 1)->GetType() == KNIGHT);
+	board.RestoreMove(0, 1, 2, 1, std::move(captured));
+	TEST(board.GetPiece(0, 1)->GetType() == KNIGHT);
+	TEST(board.GetPiece(2, 1)->GetType() == PAWN);
 
-	cb.MovePiece(1, 0, 2, 1);  //move pawn 
-	Piece* p1 = cb.GetPiece(1,0);
-	Piece* q1 = cb.GetPiece(2,1);
-	TEST(p1 == nullptr);
-	if (success) {
-		TEST(q1 != nullptr);
-		if (success) {
-			TEST(q1->GetType() == PAWN);
-			if (success)
-				std::cout<<"\tMove Piece testing success"<<std::endl;
-			else
-				std::cout<<"\tMove Piece testing failed!!!"<<std::endl;
-		}
-		else
-			std::cout<<"\tMove Piece testing failed!!!"<<std::endl;
-	}
-	else 
-		std::cout<<"\tMove Piece testing failed!!!"<<std::endl;
-
-	//****************************
-	cb.MovePiece(0,1,2,1);   // knight -> Pawn
-	Piece* q2 = cb.GetPiece(2,1);
-	TEST(q2->GetType() == KNIGHT);
-	if(success) {
-		Knight* k = dynamic_cast<Knight*>(q2);
-		TEST(k != nullptr);
-		if (success)
-			std::cout<<"\tAttack Piece testing success."<<std::endl;
-		else
-			std::cout<<"\tAttack Piece testing failed!!!"<<std::endl;
-		}
-	else
-		std::cout<<"\tAttack Piece testing failed!!!"<<std::endl;
-		
-//*************************************
-/*	cb.MovePiece(6, 0, 2, 1); // w_Pawn -> b_Knight
-	TEST((cb.off_pieces).size() == 2);
-	if (success) {
-		Piece* p3 = (cb.off_pieces).top();
-		TEST(p3->GetType() == KNIGHT);
-		if (success) {
-			TEST(p3->GetColor() == BLACK);
-			if (success)
-				std::cout<<"\toff pieces stack testing success."<<std::endl;
-			else
-				std::cout<<"\toff pieces stack testing failed!!!"<<std::endl;
-		}
-		else
-			std::cout<<"\toff pieces stack testing failed!!!"<<std::endl;
-	}	
-	else
-		std::cout<<"\toff pieces stack testing failed!!!"<<std::endl;
-		
-*/
-
-//************************************	
-/*	cb.ClearPieceStack();
-	TEST(cb.Piece_Stack_Empty());
-	if(success)
-		std::cout<<"\tClear Piece Stack success."<<std::endl;
-		
-	else
-		std::cout<<"\tClear Piece Stack failed!!!"<<std::endl;
-*/
-
-	cb.ClearBoard();
-	q1 = cb.GetPiece(2,1);
-	TEST(q1 == nullptr);
-	if (success)
-		std::cout<<"\tClear board testing success."<<std::endl;
-	else
-		std::cout<<"\tClear board testing failed!!!!"<<std::endl;
-		
-
+	board.ClearBoard();
+	TEST(board.GetPiece(2, 1) == nullptr);
+	os << "\tChessBoard ownership tests passed\n";
 	return success;
 }
