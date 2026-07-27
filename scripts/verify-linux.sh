@@ -65,10 +65,16 @@ done
 [[ "${smoke_seconds}" =~ ^[1-9][0-9]*$ ]] ||
   { echo "error: --smoke-seconds must be a positive integer" >&2; exit 2; }
 
-for tool in meson pkg-config file gresource readelf ldd timeout; do
+for tool in meson pkg-config file gresource readelf ldd realpath timeout; do
   command -v "${tool}" >/dev/null ||
     { echo "error: required tool not found: ${tool}" >&2; exit 1; }
 done
+
+case "${build_dir}" in
+  /*) ;;
+  *) build_dir="${source_dir}/${build_dir}" ;;
+esac
+build_dir="$(realpath -m -- "${build_dir}")"
 
 if ${build}; then
   if [[ -f "${build_dir}/meson-private/coredata.dat" ]]; then

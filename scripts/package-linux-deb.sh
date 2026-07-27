@@ -56,10 +56,22 @@ while [[ $# -gt 0 ]]; do
 done
 
 for tool in desktop-file-validate dpkg dpkg-deb dpkg-shlibdeps install \
-  sha256sum strip; do
+  realpath sha256sum strip; do
   command -v "${tool}" >/dev/null ||
     { echo "error: required tool not found: ${tool}" >&2; exit 1; }
 done
+
+case "${build_dir}" in
+  /*) ;;
+  *) build_dir="${source_dir}/${build_dir}" ;;
+esac
+build_dir="$(realpath -m -- "${build_dir}")"
+
+case "${output_dir}" in
+  /*) ;;
+  *) output_dir="${source_dir}/${output_dir}" ;;
+esac
+output_dir="$(realpath -m -- "${output_dir}")"
 
 case "${output_dir}" in
   "${source_dir}"/*) ;;

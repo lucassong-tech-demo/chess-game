@@ -28,6 +28,10 @@ From the repository root, run:
 scripts/verify-linux.sh
 ```
 
+Relative `--build-dir` and `--output-dir` arguments are resolved from the
+repository root, so the GitHub Actions invocation can safely use
+`--build-dir build-linux --output-dir dist/linux`.
+
 This configures `build-linux-release` with `--buildtype=release` and
 `-Dgui=enabled`, builds it, runs the core and session tests, checks that the
 application is a supported 64-bit ELF, checks `ldd` for missing libraries,
