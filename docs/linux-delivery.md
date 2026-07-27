@@ -12,6 +12,7 @@ sudo apt install \
   desktop-file-utils \
   dpkg-dev \
   file \
+  libglib2.0-bin \
   libgtkmm-4.0-dev \
   meson \
   ninja-build \
@@ -30,9 +31,9 @@ scripts/verify-linux.sh
 This configures `build-linux-release` with `--buildtype=release` and
 `-Dgui=enabled`, builds it, runs the core and session tests, checks that the
 application is a supported 64-bit ELF, checks `ldd` for missing libraries,
-rejects source/build RPATHs, and verifies that the GTK process stays alive for
-eight seconds. It uses the current X11/Wayland session, or `xvfb-run` when
-headless.
+rejects source/build RPATHs, uses `gresource` to verify the embedded CSS and
+all 12 piece images, and verifies that the GTK process stays alive for eight
+seconds. It uses the current X11/Wayland session, or `xvfb-run` when headless.
 
 For normal development:
 

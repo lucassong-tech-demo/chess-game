@@ -65,7 +65,7 @@ done
 [[ "${smoke_seconds}" =~ ^[1-9][0-9]*$ ]] ||
   { echo "error: --smoke-seconds must be a positive integer" >&2; exit 2; }
 
-for tool in meson pkg-config file readelf ldd strings timeout; do
+for tool in meson pkg-config file gresource readelf ldd timeout; do
   command -v "${tool}" >/dev/null ||
     { echo "error: required tool not found: ${tool}" >&2; exit 1; }
 done
@@ -114,14 +114,32 @@ if grep -F -e "${source_dir}" -e "${build_dir}" <<<"${rpaths}" >/dev/null; then
   exit 1
 fi
 
-strings "${executable}" |
-  grep -F '/io/github/chess_game/chess.css' >/dev/null ||
-  { echo "error: embedded GTK resource was not found in the ELF" >&2; exit 1; }
+resource_list="$(gresource list "${executable}")"
+expected_resources=(
+  /io/github/chess_game/chess.css
+  /io/github/chess_game/pieces/bbishop.png
+  /io/github/chess_game/pieces/bking.png
+  /io/github/chess_game/pieces/bknight.png
+  /io/github/chess_game/pieces/bpawn.png
+  /io/github/chess_game/pieces/bqueen.png
+  /io/github/chess_game/pieces/brook.png
+  /io/github/chess_game/pieces/wbishop.png
+  /io/github/chess_game/pieces/wking.png
+  /io/github/chess_game/pieces/wknight.png
+  /io/github/chess_game/pieces/wpawn.png
+  /io/github/chess_game/pieces/wqueen.png
+  /io/github/chess_game/pieces/wrook.png
+)
+for resource in "${expected_resources[@]}"; do
+  grep -Fxq "${resource}" <<<"${resource_list}" ||
+    { echo "error: embedded GTK resource is missing: ${resource}" >&2; exit 1; }
+done
 
 gtkmm_version="$(pkg-config --modversion gtkmm-4.0)"
 echo "GTKmm: ${gtkmm_version}"
 echo "ELF machine: ${elf_machine}"
 echo "ELF dependencies: resolved"
+echo "Embedded GTK resources: ${#expected_resources[@]} verified"
 
 if ${gui_smoke}; then
   smoke_log="$(mktemp "${TMPDIR:-/tmp}/chess-linux-smoke.XXXXXX")"
