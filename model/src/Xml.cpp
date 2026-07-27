@@ -201,36 +201,39 @@ private:
 	}
 };
 
-const Node & RequireChild(const Node & node, const std::string & name)
+const Node & RequireChild(const Node & node, std::string_view name)
 {
 	const Node * found = nullptr;
 	for (const Node & child : node.children) {
 		if (child.name == name) {
 			if (found) {
-				throw std::invalid_argument("duplicate <" + name + "> element");
+				throw std::invalid_argument(
+					"duplicate <" + std::string(name) + "> element");
 			}
 			found = &child;
 		}
 	}
 	if (!found) {
-		throw std::invalid_argument("missing <" + name + "> element");
+		throw std::invalid_argument(
+			"missing <" + std::string(name) + "> element");
 	}
 	return *found;
 }
 
-const std::string & RequireAttribute(const Node & node, const std::string & name)
+const std::string & RequireAttribute(const Node & node, std::string_view name)
 {
-	const auto it = node.attributes.find(name);
+	const auto it = node.attributes.find(std::string(name));
 	if (it == node.attributes.end()) {
 		throw std::invalid_argument(
-			"missing '" + name + "' attribute on <" + node.name + ">");
+			"missing '" + std::string(name)
+			+ "' attribute on <" + node.name + ">");
 	}
 	return it->second;
 }
 
-std::optional<std::string> Attribute(const Node & node, const std::string & name)
+std::optional<std::string> Attribute(const Node & node, std::string_view name)
 {
-	const auto it = node.attributes.find(name);
+	const auto it = node.attributes.find(std::string(name));
 	return it == node.attributes.end()
 		? std::nullopt : std::optional<std::string>(it->second);
 }
