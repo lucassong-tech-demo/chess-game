@@ -40,6 +40,7 @@ chess_core = static_library(
 chess_tests = executable(
   'chess_tests',
   'test/test.cpp',
+  cpp_args: '-DCHESS_SOURCE_DIR="@0@"'.format(meson.project_source_root()),
   include_directories: core_includes,
   link_with: chess_core,
   install: false,

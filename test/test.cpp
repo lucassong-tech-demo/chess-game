@@ -1,10 +1,14 @@
+#include <chrono>
 #include <cstddef>
 #include <exception>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "Bishop.h"
 #include "ChessBoard.h"
@@ -14,6 +18,10 @@
 #include "Pawn.h"
 #include "Queen.h"
 #include "Rook.h"
+
+#ifndef CHESS_SOURCE_DIR
+#define CHESS_SOURCE_DIR "."
+#endif
 
 namespace {
 
@@ -40,269 +48,412 @@ void CheckThrows(Function && function, const std::string & message)
 	}
 }
 
-std::size_t CountPieces(const ChessBoard & board)
-{
-	std::size_t count = 0;
-	for (int row = 0; row < ChessBoard::Size; ++row) {
-		for (int col = 0; col < ChessBoard::Size; ++col) {
-			if (board.GetPiece(row, col)) {
-				++count;
-			}
-		}
-	}
-	return count;
-}
-
 bool HasMove(const std::set<BoardPosition> & moves, int row, int col)
 {
-	return moves.find(BoardPosition(row, col)) != moves.end();
+	return moves.contains(BoardPosition(row, col));
 }
 
-void TestLegacyPieceRules()
+PieceSnapshot PieceAt(PieceType type, PieceColor color, int row, int col)
+{
+	return {type, color, row, col};
+}
+
+std::string BoardSignature(const GameFacade & game)
+{
+	std::string result;
+	for (int row = 0; row < 8; ++row) {
+		for (int col = 0; col < 8; ++col) {
+			const Piece * piece = game.Board().GetPiece(row, col);
+			if (!piece) {
+				result += '.';
+				continue;
+			}
+			result += static_cast<char>('A' + piece->GetType());
+			result += piece->GetColor() == WHITE ? 'w' : 'b';
+		}
+	}
+	result += game.Turn() == WHITE ? 'w' : 'b';
+	result += std::to_string(game.HistorySize());
+	return result;
+}
+
+std::filesystem::path TempPath(const std::string & name)
+{
+	const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+	return std::filesystem::temp_directory_path()
+		/ ("chess-phase4-" + std::to_string(stamp) + "-" + name);
+}
+
+void WriteText(const std::filesystem::path & path, const std::string & text)
+{
+	std::ofstream file(path);
+	file << text;
+}
+
+void TestPieceBoundaries()
 {
 	ChessBoard board;
 	board.ClearBoard();
-
 	board.PutPiece(std::make_unique<Rook>(ROOK, WHITE, 4, 4), 4, 4);
 	board.PutPiece(std::make_unique<Pawn>(PAWN, WHITE, 2, 4), 2, 4);
 	board.PutPiece(std::make_unique<Pawn>(PAWN, BLACK, 4, 6), 4, 6);
 	auto moves = board.GetPiece(4, 4)->GetValidMove(board);
-	Check(moves.size() == 10, "rook keeps the legacy orthogonal ray rules");
+	Check(moves.size() == 10, "rook rays stop at board edges and blockers");
 	Check(!HasMove(moves, 2, 4), "rook cannot capture a friendly blocker");
 	Check(HasMove(moves, 4, 6) && !HasMove(moves, 4, 7),
-		"rook captures an enemy blocker and stops");
+		"rook can capture one enemy blocker");
 
 	board.ClearBoard();
-	board.PutPiece(std::make_unique<Bishop>(BISHOP, WHITE, 4, 4), 4, 4);
-	board.PutPiece(std::make_unique<Pawn>(PAWN, WHITE, 2, 2), 2, 2);
-	board.PutPiece(std::make_unique<Pawn>(PAWN, BLACK, 2, 6), 2, 6);
-	moves = board.GetPiece(4, 4)->GetValidMove(board);
-	Check(moves.size() == 9, "bishop keeps the legacy diagonal ray rules");
-	Check(!HasMove(moves, 2, 2), "bishop cannot capture a friendly blocker");
-	Check(HasMove(moves, 2, 6) && !HasMove(moves, 1, 7),
-		"bishop captures an enemy blocker and stops");
+	board.PutPiece(std::make_unique<Bishop>(BISHOP, WHITE, 0, 0), 0, 0);
+	Check(board.GetPiece(0, 0)->GetValidMove(board).size() == 7,
+		"bishop has seven diagonal moves from a corner");
 
 	board.ClearBoard();
 	board.PutPiece(std::make_unique<Queen>(QUEEN, WHITE, 4, 4), 4, 4);
-	moves = board.GetPiece(4, 4)->GetValidMove(board);
-	Check(moves.size() == 27, "queen keeps the combined rook and bishop rules");
+	Check(board.GetPiece(4, 4)->GetValidMove(board).size() == 27,
+		"queen combines all unobstructed rays");
 
 	board.ClearBoard();
-	board.PutPiece(std::make_unique<Knight>(KNIGHT, WHITE, 4, 4), 4, 4);
-	board.PutPiece(std::make_unique<Pawn>(PAWN, WHITE, 2, 3), 2, 3);
-	board.PutPiece(std::make_unique<Pawn>(PAWN, BLACK, 2, 5), 2, 5);
-	moves = board.GetPiece(4, 4)->GetValidMove(board);
-	Check(moves.size() == 7, "knight keeps all eight legacy offsets except friendly cells");
-	Check(!HasMove(moves, 2, 3) && HasMove(moves, 2, 5),
-		"knight preserves friendly blocking and enemy capture behavior");
+	board.PutPiece(std::make_unique<Knight>(KNIGHT, WHITE, 0, 0), 0, 0);
+	Check(board.GetPiece(0, 0)->GetValidMove(board).size() == 2,
+		"knight is clipped correctly in a corner");
 
 	board.ClearBoard();
-	board.PutPiece(std::make_unique<King>(KING, WHITE, 4, 4), 4, 4);
-	board.PutPiece(std::make_unique<Pawn>(PAWN, WHITE, 3, 3), 3, 3);
-	board.PutPiece(std::make_unique<Pawn>(PAWN, BLACK, 3, 4), 3, 4);
-	moves = board.GetPiece(4, 4)->GetValidMove(board);
-	Check(moves.size() == 7, "king keeps the legacy one-square neighborhood");
-	Check(!HasMove(moves, 3, 3) && HasMove(moves, 3, 4),
-		"king preserves friendly blocking and enemy capture behavior");
+	board.PutPiece(std::make_unique<King>(KING, WHITE, 0, 0), 0, 0);
+	Check(board.GetPiece(0, 0)->GetValidMove(board).size() == 3,
+		"king is clipped correctly in a corner");
 
 	board.ClearBoard();
 	board.PutPiece(std::make_unique<Pawn>(PAWN, WHITE, 6, 3), 6, 3);
 	moves = board.GetPiece(6, 3)->GetValidMove(board);
-	Check(moves.size() == 2 && HasMove(moves, 5, 3) && HasMove(moves, 4, 3),
-		"white pawn keeps the legacy initial one-or-two-step move");
-	board.PutPiece(std::make_unique<Pawn>(PAWN, WHITE, 5, 3), 5, 3);
+	Check(HasMove(moves, 5, 3) && HasMove(moves, 4, 3),
+		"white pawn has its initial one- and two-square advances");
 	board.PutPiece(std::make_unique<Pawn>(PAWN, BLACK, 5, 2), 5, 2);
 	board.PutPiece(std::make_unique<Pawn>(PAWN, BLACK, 5, 4), 5, 4);
 	moves = board.GetPiece(6, 3)->GetValidMove(board);
-	Check(moves.size() == 2 && HasMove(moves, 5, 2) && HasMove(moves, 5, 4),
-		"white pawn keeps diagonal captures and forward blocking");
-
-	board.ClearBoard();
-	board.PutPiece(std::make_unique<Pawn>(PAWN, BLACK, 1, 3), 1, 3);
-	moves = board.GetPiece(1, 3)->GetValidMove(board);
-	Check(moves.size() == 2 && HasMove(moves, 2, 3) && HasMove(moves, 3, 3),
-		"black pawn keeps the legacy initial one-or-two-step move");
+	Check(HasMove(moves, 5, 2) && HasMove(moves, 5, 4),
+		"pawn captures diagonally at both board-safe offsets");
 }
 
-void TestBoardOwnership()
-{
-	ChessBoard board;
-	Check(CountPieces(board) == 32, "a board starts with 32 owned pieces");
-	Check(board.GetKing(WHITE) == board.GetPiece(7, 4), "white king is discovered on the board");
-	Check(board.GetKing(BLACK) == board.GetPiece(0, 4), "black king is discovered on the board");
-
-	auto captured = board.MovePiece(7, 6, 5, 5);
-	Check(!captured, "an ordinary move does not transfer a captured piece");
-	Check(board.GetPiece(7, 6) == nullptr, "ordinary move clears source");
-	Check(board.GetPiece(5, 5)->GetType() == KNIGHT, "ordinary move transfers piece ownership");
-	board.RestoreMove(7, 6, 5, 5);
-	Check(board.GetPiece(7, 6)->GetType() == KNIGHT, "restore reverses an ordinary move");
-
-	captured = board.MovePiece(7, 6, 1, 1);
-	Check(captured && captured->GetType() == PAWN, "capture transfers victim ownership");
-	Check(CountPieces(board) == 31, "captured piece is no longer board-owned");
-	board.RestoreMove(7, 6, 1, 1, std::move(captured));
-	Check(CountPieces(board) == 32, "restore returns captured ownership to board");
-
-	board.ClearBoard();
-	Check(CountPieces(board) == 0, "ClearBoard releases every piece");
-	Check(board.GetKing(WHITE) == nullptr, "cleared board has no stale king observer");
-	board.ClearBoard();
-	Check(CountPieces(board) == 0, "ClearBoard is idempotent");
-	board.Reset();
-	Check(CountPieces(board) == 32, "Reset repopulates a cleared board");
-}
-
-void TestMoveValues()
-{
-	ChessBoard board;
-	const Piece * knight = board.GetPiece(7, 6);
-	auto first = knight->GetValidMove(board);
-	auto second = knight->GetValidMove(board);
-	Check(first.size() == 2 && second.size() == 2, "repeated move generation returns complete sets");
-	first.clear();
-	Check(second.size() == 2, "move sets have independent value lifetimes");
-
-	GameFacade game;
-	game.NewGame();
-	Check(game.GetPiece(7, 6, WHITE) != nullptr, "facade selects an owned piece");
-	auto & facade_first = game.GetValidMoves();
-	Check(facade_first.size() == 2, "facade exposes generated moves");
-	auto * stable_address = &facade_first;
-	auto & facade_second = game.GetValidMoves();
-	Check(&facade_second == stable_address, "facade move storage has a stable member lifetime");
-	Check(facade_second.size() == 2, "facade move storage refreshes without allocation");
-}
-
-void TestMovesCapturesAndUndo()
+void TestTurnLegalityAndCheckFilter()
 {
 	GameFacade game;
-	game.NewGame();
-	game.MovePiece(7, 6, 5, 5);
-	Check(game.HistorySize() == 1, "ordinary move is recorded by value");
-	const PieceHistory * ordinary = game.Undo();
-	Check(ordinary != nullptr, "ordinary move can be undone");
-	Check(!ordinary->IsAttackPieceHere(), "ordinary history has no capture snapshot");
-	Check(game.Board().GetPiece(7, 6)->GetType() == KNIGHT, "ordinary undo restores mover");
-	Check(game.Board().GetPiece(5, 5) == nullptr, "ordinary undo clears destination");
-	Check(game.HistorySize() == 0, "ordinary undo pops history");
-	Check(game.Undo() == nullptr, "undo on empty history is safe");
+	Check(game.Turn() == WHITE, "white starts");
+	CheckThrows<std::invalid_argument>(
+		[&] { game.MovePiece(1, 4, 3, 4); },
+		"black cannot move on white's turn");
+	CheckThrows<std::invalid_argument>(
+		[&] { game.MovePiece(6, 4, 3, 4); },
+		"a pawn cannot move three squares");
 
-	game.MovePiece(7, 6, 1, 1);
-	Check(game.HistorySize() == 1, "capture is recorded");
-	const PieceHistory * capture = game.Undo();
-	Check(capture && capture->IsAttackPieceHere(), "capture history owns stable victim data");
-	Check(capture->GetType_Moving() == KNIGHT, "capture snapshot records mover type");
-	Check(capture->GetType_Attack() == PAWN, "capture snapshot records victim type");
-	Check(game.Board().GetPiece(7, 6)->GetType() == KNIGHT, "capture undo restores mover");
-	Check(game.Board().GetPiece(1, 1)->GetType() == PAWN, "capture undo reconstructs victim");
+	game.SetPosition({
+		PieceAt(KING, WHITE, 7, 4),
+		PieceAt(ROOK, WHITE, 6, 4),
+		PieceAt(ROOK, BLACK, 0, 4),
+		PieceAt(KING, BLACK, 0, 0),
+	}, WHITE, {false, false, false, false});
+	const auto pinned_moves = game.LegalMoves(6, 4);
+	Check(!HasMove(pinned_moves, 6, 3) && HasMove(pinned_moves, 5, 4),
+		"a pinned rook may stay on the checking line but not expose its king");
 
-	// The same mover captures twice. History must retain both independent victims.
-	game.MovePiece(7, 6, 1, 1);
-	game.MovePiece(1, 1, 0, 3);
-	Check(game.HistorySize() == 2, "continuous captures create two history values");
-	Check(game.Board().GetPiece(0, 3)->GetType() == KNIGHT, "second capture moves the same owner");
-	const PieceHistory * second_capture = game.Undo();
-	Check(second_capture->GetType_Attack() == QUEEN, "latest capture retains queen snapshot");
-	Check(game.Board().GetPiece(1, 1)->GetType() == KNIGHT, "first undo restores intermediate square");
-	Check(game.Board().GetPiece(0, 3)->GetType() == QUEEN, "first undo restores second victim");
-	const PieceHistory * first_capture = game.Undo();
-	Check(first_capture->GetType_Attack() == PAWN, "earlier capture retains pawn snapshot");
-	Check(game.Board().GetPiece(7, 6)->GetType() == KNIGHT, "second undo restores original square");
-	Check(game.Board().GetPiece(1, 1)->GetType() == PAWN, "second undo restores first victim");
-
-	game.MovePiece(7, 6, 5, 5);
-	game.MovePiece(0, 1, 2, 2);
-	Check(game.HistorySize() == 2, "history accumulates moves");
-	game.ClearHistory();
-	Check(game.HistorySize() == 0, "ClearHistory releases all history values");
-	Check(game.Undo() == nullptr, "cleared history cannot be undone");
+	game.SetPosition({
+		PieceAt(KING, WHITE, 7, 4),
+		PieceAt(ROOK, BLACK, 7, 0),
+		PieceAt(KING, BLACK, 0, 4),
+	}, WHITE, {false, false, false, false});
+	const auto king_moves = game.LegalMoves(7, 4);
+	Check(!HasMove(king_moves, 7, 3),
+		"a king may not move onto an attacked square");
 }
 
-void TestNewGameAndDestruction()
+void TestCheckmateStalemateAndTerminalUndo()
 {
 	GameFacade game;
-	game.NewGame();
-	game.MovePiece(7, 6, 1, 1);
-	game.NewGame();
-	Check(CountPieces(game.Board()) == 32, "NewGame replaces board after a capture");
-	Check(game.HistorySize() == 0, "NewGame clears old history");
-	Check(game.Board().GetPiece(7, 6)->GetType() == KNIGHT, "NewGame restores initial position");
-	game.NewGame();
-	game.NewGame();
-	Check(CountPieces(game.Board()) == 32, "repeated NewGame remains idempotent");
-
-	game.Clear_Board();
+	game.MovePiece(6, 5, 5, 5);
+	game.MovePiece(1, 4, 3, 4);
+	game.MovePiece(6, 6, 4, 6);
+	game.MovePiece(0, 3, 4, 7);
+	Check(game.Status() == GameStatus::Checkmate, "Fool's mate is detected");
+	Check(game.IsGameOver(), "checkmate stops the game");
 	CheckThrows<std::logic_error>(
-		[&game] { static_cast<void>(game.Board()); },
-		"cleared facade reports missing board");
-	game.NewGame();
-	Check(CountPieces(game.Board()) == 32, "NewGame works after explicit board clear");
+		[&] { game.MovePiece(6, 0, 5, 0); },
+		"moves are rejected after checkmate");
+	Check(game.Undo() != nullptr, "undo remains available after checkmate");
+	Check(!game.IsGameOver() && game.Turn() == BLACK,
+		"terminal undo restores a playable turn");
 
-	for (int iteration = 0; iteration < 50; ++iteration) {
-		GameFacade scoped_game;
-		scoped_game.NewGame();
-		scoped_game.MovePiece(7, 6, 1, 1);
-		scoped_game.MovePiece(1, 1, 0, 3);
-	}
-	Check(true, "facade destruction paths completed");
+	game.SetPosition({
+		PieceAt(KING, BLACK, 0, 0),
+		PieceAt(KING, WHITE, 2, 2),
+		PieceAt(QUEEN, WHITE, 1, 2),
+	}, BLACK, {false, false, false, false});
+	Check(game.Status() == GameStatus::Stalemate, "known stalemate is detected");
 }
 
-void TestCoordinateValidation()
+void TestCastlingAndUndo()
 {
-	ChessBoard board;
-	Check(!ChessBoard::IsValidPosition(-1, 0), "negative row is invalid");
-	Check(!ChessBoard::IsValidPosition(0, 8), "column eight is invalid");
-	CheckThrows<std::out_of_range>(
-		[&board] { static_cast<void>(board.GetPiece(-1, 0)); },
-		"board rejects negative coordinates");
-	CheckThrows<std::out_of_range>(
-		[&board] { static_cast<void>(board.GetPiece(8, 0)); },
-		"board rejects coordinates above range");
-	CheckThrows<std::out_of_range>(
-		[&board] { board.MovePiece(7, 6, 8, 6); },
-		"board move validates destination");
-	CheckThrows<std::invalid_argument>(
-		[&board] { board.MovePiece(4, 4, 3, 4); },
-		"board rejects an empty source");
-	CheckThrows<std::invalid_argument>(
-		[&board] { board.MovePiece(7, 6, 7, 6); },
-		"board rejects identical source and destination");
-	CheckThrows<std::out_of_range>(
-		[] { static_cast<void>(BoardPosition(0, -1)); },
-		"BoardPosition enforces the same coordinate range");
-
 	GameFacade game;
+	game.SetPosition({
+		PieceAt(KING, WHITE, 7, 4),
+		PieceAt(ROOK, WHITE, 7, 0),
+		PieceAt(ROOK, WHITE, 7, 7),
+		PieceAt(KING, BLACK, 0, 4),
+	}, WHITE);
+	const auto moves = game.LegalMoves(7, 4);
+	Check(HasMove(moves, 7, 6) && HasMove(moves, 7, 2),
+		"both unobstructed castling destinations are legal");
+	game.MovePiece(7, 4, 7, 6);
+	Check(game.Board().GetPiece(7, 6)->GetType() == KING
+			&& game.Board().GetPiece(7, 5)->GetType() == ROOK,
+		"king-side castling moves both king and rook");
+	Check(!game.Castling().white_king_side
+			&& !game.Castling().white_queen_side,
+		"moving the king clears both castling rights");
+	game.Undo();
+	Check(game.Board().GetPiece(7, 4)->GetType() == KING
+			&& game.Board().GetPiece(7, 7)->GetType() == ROOK,
+		"castling undo restores both pieces");
+	Check(game.Castling().white_king_side && game.Castling().white_queen_side,
+		"castling undo restores rights");
+
+	game.SetPosition({
+		PieceAt(KING, WHITE, 7, 4),
+		PieceAt(ROOK, WHITE, 7, 7),
+		PieceAt(KING, BLACK, 0, 0),
+		PieceAt(ROOK, BLACK, 5, 5),
+	}, WHITE);
+	Check(!HasMove(game.LegalMoves(7, 4), 7, 6),
+		"castling through an attacked square is illegal");
+}
+
+void TestEnPassantAndUndo()
+{
+	GameFacade game;
+	game.SetPosition({
+		PieceAt(KING, WHITE, 7, 4),
+		PieceAt(KING, BLACK, 0, 4),
+		PieceAt(PAWN, WHITE, 3, 4),
+		PieceAt(PAWN, BLACK, 1, 3),
+	}, BLACK, {false, false, false, false});
+	game.MovePiece(1, 3, 3, 3);
+	Check(game.EnPassantTarget()
+			&& *game.EnPassantTarget() == BoardPosition(2, 3),
+		"a double pawn move records the en passant target");
+	Check(HasMove(game.LegalMoves(3, 4), 2, 3),
+		"the adjacent pawn may capture en passant immediately");
+	game.MovePiece(3, 4, 2, 3);
+	Check(game.Board().GetPiece(3, 3) == nullptr
+			&& game.Board().GetPiece(2, 3)->GetColor() == WHITE,
+		"en passant removes the bypassed pawn");
+	game.Undo();
+	Check(game.Board().GetPiece(3, 4)->GetColor() == WHITE
+			&& game.Board().GetPiece(3, 3)->GetColor() == BLACK,
+		"en passant undo restores both pawns");
+	Check(game.EnPassantTarget()
+			&& *game.EnPassantTarget() == BoardPosition(2, 3),
+		"en passant undo restores the transient target");
+}
+
+void TestPromotionAndUndo()
+{
+	GameFacade game;
+	game.SetPosition({
+		PieceAt(KING, WHITE, 7, 4),
+		PieceAt(KING, BLACK, 0, 4),
+		PieceAt(PAWN, WHITE, 1, 0),
+	}, WHITE, {false, false, false, false});
+	CheckThrows<std::invalid_argument>(
+		[&] { game.MovePiece(1, 0, 0, 0); },
+		"promotion cannot silently choose a piece");
+	Check(game.Board().GetPiece(1, 0)->GetType() == PAWN
+			&& game.HistorySize() == 0,
+		"failed promotion leaves board and history unchanged");
+	game.MovePiece(1, 0, 0, 0, KNIGHT);
+	Check(game.Board().GetPiece(0, 0)->GetType() == KNIGHT,
+		"the requested promotion piece is created");
+	game.Undo();
+	Check(game.Board().GetPiece(1, 0)->GetType() == PAWN
+			&& game.Board().GetPiece(0, 0) == nullptr,
+		"promotion undo restores the pawn");
+}
+
+void TestDrawRules()
+{
+	GameFacade game;
+	for (int repetition = 0; repetition < 2; ++repetition) {
+		game.MovePiece(7, 6, 5, 5);
+		game.MovePiece(0, 6, 2, 5);
+		game.MovePiece(5, 5, 7, 6);
+		game.MovePiece(2, 5, 0, 6);
+	}
+	Check(game.Status() == GameStatus::DrawThreefold,
+		"threefold repetition is detected from full position keys");
+	Check(game.Undo() != nullptr && !game.IsGameOver(),
+		"threefold draw can be undone");
+
+	game.SetPosition({
+		PieceAt(KING, WHITE, 7, 4),
+		PieceAt(ROOK, WHITE, 7, 0),
+		PieceAt(KING, BLACK, 0, 4),
+		PieceAt(ROOK, BLACK, 0, 0),
+	}, WHITE, {false, false, false, false}, std::nullopt, 99, 50);
+	game.MovePiece(7, 0, 6, 0);
+	Check(game.Status() == GameStatus::DrawFiftyMove,
+		"one hundred halfmoves without pawn move or capture triggers a draw");
+
+	game.SetPosition({
+		PieceAt(KING, WHITE, 7, 4),
+		PieceAt(KING, BLACK, 0, 4),
+	}, WHITE, {false, false, false, false});
+	Check(game.Status() == GameStatus::DrawInsufficientMaterial,
+		"king versus king is insufficient material");
+}
+
+void TestSaveRoundTripAndAtomicFailures()
+{
+	const auto save_path = TempPath("roundtrip.xml");
+	const auto en_passant_path = TempPath("en-passant.xml");
+	const auto promotion_path = TempPath("promotion.xml");
+	const auto malformed_path = TempPath("malformed.xml");
+	const auto truncated_path = TempPath("truncated.xml");
+	const auto unknown_path = TempPath("unknown.xml");
+	GameFacade game;
+	game.SetPosition({
+		PieceAt(KING, WHITE, 7, 4),
+		PieceAt(ROOK, WHITE, 7, 7),
+		PieceAt(KING, BLACK, 0, 4),
+	}, WHITE);
+	game.MovePiece(7, 4, 7, 6);
+	game.SaveAs(save_path.string());
+
+	std::ifstream written(save_path);
+	std::string first_line;
+	std::getline(written, first_line);
+	Check(first_line.starts_with("<?xml"), "save output is legal XML, not legacy '-<' text");
+
+	GameFacade loaded;
+	loaded.MovePiece(6, 4, 4, 4);
+	loaded.LoadGame(save_path.string());
+	Check(BoardSignature(loaded) == BoardSignature(game),
+		"round-trip restores board, turn, and history");
+	Check(loaded.CurrentFile() == save_path.string(),
+		"load records the current file path");
+	loaded.Undo();
+	Check(loaded.Board().GetPiece(7, 4)->GetType() == KING
+			&& loaded.Board().GetPiece(7, 7)->GetType() == ROOK,
+		"loaded special-move history remains undoable");
+
+	GameFacade en_passant;
+	en_passant.SetPosition({
+		PieceAt(KING, WHITE, 7, 4),
+		PieceAt(KING, BLACK, 0, 4),
+		PieceAt(PAWN, WHITE, 3, 4),
+		PieceAt(PAWN, BLACK, 1, 3),
+	}, BLACK, {false, false, false, false});
+	en_passant.MovePiece(1, 3, 3, 3);
+	en_passant.SaveAs(en_passant_path.string());
+	GameFacade loaded_en_passant;
+	loaded_en_passant.LoadGame(en_passant_path.string());
+	Check(loaded_en_passant.EnPassantTarget()
+			&& *loaded_en_passant.EnPassantTarget() == BoardPosition(2, 3),
+		"round-trip restores the transient en passant target");
+	loaded_en_passant.MovePiece(3, 4, 2, 3);
+	loaded_en_passant.SaveGame(loaded_en_passant.CurrentFile());
+	GameFacade reloaded_en_passant;
+	reloaded_en_passant.LoadGame(en_passant_path.string());
+	reloaded_en_passant.Undo();
+	Check(reloaded_en_passant.Board().GetPiece(3, 4)
+			&& reloaded_en_passant.Board().GetPiece(3, 3),
+		"round-trip preserves en passant history for exact undo");
+
+	GameFacade promotion;
+	promotion.SetPosition({
+		PieceAt(KING, WHITE, 7, 4),
+		PieceAt(KING, BLACK, 0, 4),
+		PieceAt(PAWN, WHITE, 1, 0),
+	}, WHITE, {false, false, false, false});
+	promotion.MovePiece(1, 0, 0, 0, BISHOP);
+	promotion.SaveAs(promotion_path.string());
+	GameFacade loaded_promotion;
+	loaded_promotion.LoadGame(promotion_path.string());
+	Check(loaded_promotion.Board().GetPiece(0, 0)->GetType() == BISHOP,
+		"round-trip retains the chosen promotion type");
+	loaded_promotion.Undo();
+	Check(loaded_promotion.Board().GetPiece(1, 0)->GetType() == PAWN,
+		"round-trip preserves promotion history for exact undo");
+
+	const std::string before_failure = BoardSignature(loaded);
+	WriteText(malformed_path, "<chessgame><board></chessgame>");
+	WriteText(truncated_path, "<?xml version=\"1.0\"?><chessgame version=\"2\">");
+	WriteText(
+		unknown_path,
+		"<?xml version=\"1.0\"?><chessgame version=\"99\"></chessgame>");
+	for (const auto & bad : {malformed_path, truncated_path, unknown_path}) {
+		CheckThrows<std::invalid_argument>(
+			[&] { loaded.LoadGame(bad.string()); },
+			"malformed, truncated, or unknown-version XML is rejected");
+		Check(BoardSignature(loaded) == before_failure,
+			"failed load atomically preserves the current game");
+	}
+	CheckThrows<std::runtime_error>(
+		[&] { loaded.LoadGame(TempPath("missing.xml").string()); },
+		"a missing load path reports an error");
+	Check(BoardSignature(loaded) == before_failure,
+		"missing-file load preserves the current game");
+	CheckThrows<std::runtime_error>(
+		[&] {
+			loaded.SaveAs(
+				(TempPath("missing-parent") / "game.xml").string());
+		},
+		"an unwritable/nonexistent save parent reports an error");
+	Check(BoardSignature(loaded) == before_failure,
+		"failed save does not damage the game");
+
+	std::filesystem::remove(save_path);
+	std::filesystem::remove(en_passant_path);
+	std::filesystem::remove(promotion_path);
+	std::filesystem::remove(malformed_path);
+	std::filesystem::remove(truncated_path);
+	std::filesystem::remove(unknown_path);
+}
+
+void TestLegacyFixtureAndNewGame()
+{
+	GameFacade game;
+	game.LoadGame(std::string(CHESS_SOURCE_DIR) + "/try.xml");
+	Check(game.HistorySize() == 4, "legacy repository XML history is loaded");
+	Check(game.Board().GetPiece(4, 7)
+			&& game.Board().GetPiece(4, 7)->GetType() == QUEEN,
+		"legacy repository XML board is loaded");
+	game.Undo();
+	Check(game.Board().GetPiece(0, 3)
+			&& game.Board().GetPiece(0, 3)->GetType() == QUEEN,
+		"legacy history can be undone");
 	game.NewGame();
-	CheckThrows<std::out_of_range>(
-		[&game] { static_cast<void>(game.GetPiece(0, 8, WHITE)); },
-		"facade selection propagates coordinate validation");
-	CheckThrows<std::out_of_range>(
-		[&game] { static_cast<void>(game.isCellTaken(-1, 0)); },
-		"facade occupancy query validates coordinates");
-	CheckThrows<std::out_of_range>(
-		[&game] { static_cast<void>(game.isValidMove(8, 0)); },
-		"facade move query validates coordinates");
-	CheckThrows<std::out_of_range>(
-		[&game] { static_cast<void>(game.Check(-1, 0)); },
-		"facade check query validates coordinates");
+	Check(game.Turn() == WHITE && game.HistorySize() == 0
+			&& game.CurrentFile().empty()
+			&& game.Board().GetPiece(6, 4)->GetType() == PAWN,
+		"new game fully resets board, turn, history, and file");
 }
 
 } // namespace
 
 int main()
 {
-	TestLegacyPieceRules();
-	TestBoardOwnership();
-	TestMoveValues();
-	TestMovesCapturesAndUndo();
-	TestNewGameAndDestruction();
-	TestCoordinateValidation();
+	TestPieceBoundaries();
+	TestTurnLegalityAndCheckFilter();
+	TestCheckmateStalemateAndTerminalUndo();
+	TestCastlingAndUndo();
+	TestEnPassantAndUndo();
+	TestPromotionAndUndo();
+	TestDrawRules();
+	TestSaveRoundTripAndAtomicFailures();
+	TestLegacyFixtureAndNewGame();
 
 	if (failures != 0) {
-		std::cerr << failures << " test assertion(s) failed\n";
+		std::cerr << failures << " core test assertion(s) failed\n";
 		return 1;
 	}
-	std::cout << "All ownership and behavior tests passed\n";
+	std::cout << "All phase-four core tests passed\n";
 	return 0;
 }
