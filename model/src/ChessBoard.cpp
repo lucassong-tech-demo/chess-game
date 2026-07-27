@@ -33,6 +33,28 @@ ChessBoard::ChessBoard()
 	InitializePieces();
 }
 
+ChessBoard::ChessBoard(const ChessBoard & other)
+{
+	ClearBoard();
+	for (int row = 0; row < Size; ++row) {
+		for (int col = 0; col < Size; ++col) {
+			if (const Piece * piece = other.GetPiece(row, col)) {
+				board_[row][col] = MakePiece(
+					piece->GetType(), piece->GetColor(), row, col);
+			}
+		}
+	}
+}
+
+ChessBoard & ChessBoard::operator=(const ChessBoard & other)
+{
+	if (this != &other) {
+		ChessBoard copy(other);
+		board_ = std::move(copy.board_);
+	}
+	return *this;
+}
+
 bool ChessBoard::IsValidPosition(int row, int col) noexcept
 {
 	return row >= 0 && row < Size && col >= 0 && col < Size;
@@ -160,6 +182,12 @@ void ChessBoard::PutPiece(std::unique_ptr<Piece> piece, int row, int col)
 	}
 	piece->Update_location(row, col);
 	board_[row][col] = std::move(piece);
+}
+
+std::unique_ptr<Piece> ChessBoard::TakePiece(int row, int col)
+{
+	ValidatePosition(row, col);
+	return std::move(board_[row][col]);
 }
 
 bool ChessBoard::Test(std::ostream & os)

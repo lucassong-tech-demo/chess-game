@@ -15,6 +15,7 @@ public:
 	BoardPosition(int r, int col);
 
 	bool operator <(const BoardPosition & other)const;
+	bool operator==(const BoardPosition & other) const = default;
 	
 	int GetRow()const;
 

@@ -15,8 +15,8 @@ public:
 	ChessBoard();
 	~ChessBoard() = default;
 
-	ChessBoard(const ChessBoard &) = delete;
-	ChessBoard & operator=(const ChessBoard &) = delete;
+	ChessBoard(const ChessBoard &);
+	ChessBoard & operator=(const ChessBoard &);
 	ChessBoard(ChessBoard &&) noexcept = default;
 	ChessBoard & operator=(ChessBoard &&) noexcept = default;
 
@@ -46,6 +46,7 @@ public:
 		std::unique_ptr<Piece> captured_piece = {});
 
 	void PutPiece(std::unique_ptr<Piece> piece, int row, int col);
+	std::unique_ptr<Piece> TakePiece(int row, int col);
 
 	static bool Test(std::ostream & os);
 
