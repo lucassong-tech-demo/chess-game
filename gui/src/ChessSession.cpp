@@ -1,15 +1,35 @@
 #include "ChessSession.h"
 
+#include <stdexcept>
+
 namespace {
 
-std::string TurnStatus(PieceColor color)
+std::string TurnName(PieceColor color)
 {
-	return color == WHITE ? "White to move" : "Black to move";
+	return color == WHITE ? "White" : "Black";
 }
 
-std::string TurnPiece(PieceColor color)
+std::string StateStatus(const GameFacade & game)
 {
-	return color == WHITE ? "white piece" : "black piece";
+	const std::string turn = TurnName(game.Turn());
+	switch (game.Status()) {
+	case GameStatus::Ongoing: return turn + " to move";
+	case GameStatus::Check: return turn + " to move — check";
+	case GameStatus::Checkmate:
+		return "Checkmate — " + TurnName(game.Turn() == WHITE ? BLACK : WHITE)
+			+ " wins";
+	case GameStatus::Stalemate: return "Stalemate";
+	case GameStatus::DrawThreefold: return "Draw — threefold repetition";
+	case GameStatus::DrawFiftyMove: return "Draw — fifty-move rule";
+	case GameStatus::DrawInsufficientMaterial:
+		return "Draw — insufficient material";
+	}
+	throw std::logic_error("unknown game status");
+}
+
+bool IsPromotionSquare(const Piece & piece, int row)
+{
+	return piece.GetType() == PAWN && (row == 0 || row == 7);
 }
 
 } // namespace
@@ -22,100 +42,201 @@ ChessSession::ChessSession()
 void ChessSession::NewGame()
 {
 	game_.NewGame();
-	turn_ = WHITE;
-	game_active_ = true;
 	ClearSelection();
-	status_ = TurnStatus(turn_);
+	pending_promotion_.reset();
+	RefreshStatus("New game");
 }
 
 ChessSession::Interaction ChessSession::SelectCell(int row, int col)
 {
-	if (!game_active_) {
-		status_ = "Game over — start a new game or undo";
+	if (game_.IsGameOver() || PlayerFor(game_.Turn()) == PlayerKind::Computer
+		|| pending_promotion_) {
+		ClearSelection();
+		RefreshStatus();
 		return Interaction::Ignored;
 	}
 
 	if (selected_ && game_.isValidMove(row, col)) {
-		const bool captured = game_.isCellTaken(row, col);
-		const int source_row = selected_->GetRow();
-		const int source_col = selected_->GetColumn();
-		game_.MovePiece(source_row, source_col, row, col);
-		UpdateStatusAfterMove(row, col, captured);
-		ClearSelection();
+		const Piece * moving = game_.Board().GetPiece(
+			selected_->GetRow(), selected_->GetColumn());
+		const PendingMove move{
+			selected_->GetRow(), selected_->GetColumn(), row, col};
+		if (moving && IsPromotionSquare(*moving, row)) {
+			pending_promotion_ = move;
+			ClearSelection();
+			status_ = "Choose promotion: queen, rook, bishop, or knight";
+			return Interaction::PromotionRequired;
+		}
+		CompleteMove(move, std::nullopt);
 		return Interaction::MoveCompleted;
 	}
 
 	const Piece * clicked_piece = game_.Board().GetPiece(row, col);
-	if (clicked_piece && clicked_piece->GetColor() == turn_) {
+	if (clicked_piece && clicked_piece->GetColor() == game_.Turn()) {
 		SelectPiece(row, col);
 		return Interaction::SelectionChanged;
 	}
 
-	if (selected_) {
-		status_ = "Choose a highlighted square or another "
-			+ TurnPiece(turn_);
-	} else {
-		status_ = TurnStatus(turn_);
-	}
+	ClearSelection();
+	RefreshStatus();
 	return Interaction::Ignored;
+}
+
+void ChessSession::Promote(PieceType type)
+{
+	if (!pending_promotion_) {
+		throw std::logic_error("no promotion is pending");
+	}
+	const PendingMove move = *pending_promotion_;
+	pending_promotion_.reset();
+	CompleteMove(move, type);
+}
+
+void ChessSession::CompleteMove(
+	const PendingMove & move,
+	std::optional<PieceType> promotion)
+{
+	game_.MovePiece(
+		move.source_row,
+		move.source_col,
+		move.destination_row,
+		move.destination_col,
+		promotion);
+	ClearSelection();
+	pending_promotion_.reset();
+	RefreshStatus();
 }
 
 bool ChessSession::Undo()
 {
+	ClearInteraction();
 	if (!game_.Undo()) {
-		status_ = "Nothing to undo";
+		status_ = "Nothing to undo — " + StateStatus(game_);
 		return false;
 	}
-
-	turn_ = turn_ == WHITE ? BLACK : WHITE;
-	game_active_ = true;
-	ClearSelection();
-	status_ = "Move undone — " + TurnStatus(turn_);
+	RefreshStatus("Move undone");
 	return true;
 }
 
-void ChessSession::Save(const std::string & file_name)
+void ChessSession::Save()
 {
-	game_.SaveGame(file_name);
-	status_ = "Game saved";
+	ClearInteraction();
+	if (game_.CurrentFile().empty()) {
+		throw std::logic_error("save path required");
+	}
+	game_.SaveGame(game_.CurrentFile());
+	RefreshStatus("Game saved");
 }
 
-const ChessBoard & ChessSession::Board() const
+void ChessSession::SaveAs(const std::string & file_name)
 {
-	return game_.Board();
+	ClearInteraction();
+	game_.SaveAs(file_name);
+	RefreshStatus("Game saved");
 }
 
-PieceColor ChessSession::Turn() const noexcept
+void ChessSession::Load(const std::string & file_name)
 {
-	return turn_;
+	ClearInteraction();
+	game_.LoadGame(file_name);
+	RefreshStatus("Game loaded");
 }
 
+void ChessSession::ClearInteraction()
+{
+	ClearSelection();
+	pending_promotion_.reset();
+}
+
+void ChessSession::SetPlayers(PlayerKind white, PlayerKind black)
+{
+	white_player_ = white;
+	black_player_ = black;
+	ClearInteraction();
+	RefreshStatus("Player mode changed");
+}
+
+bool ChessSession::AdvanceComputer()
+{
+	if (game_.IsGameOver() || PlayerFor(game_.Turn()) != PlayerKind::Computer) {
+		return false;
+	}
+	for (int row = 0; row < ChessBoard::Size; ++row) {
+		for (int col = 0; col < ChessBoard::Size; ++col) {
+			const Piece * piece = game_.Board().GetPiece(row, col);
+			if (!piece || piece->GetColor() != game_.Turn()) {
+				continue;
+			}
+			const auto moves = game_.LegalMoves(row, col);
+			if (moves.empty()) {
+				continue;
+			}
+			const BoardPosition destination = *moves.begin();
+			const std::optional<PieceType> promotion =
+				IsPromotionSquare(*piece, destination.GetRow())
+				? std::optional<PieceType>(QUEEN) : std::nullopt;
+			game_.MovePiece(
+				row,
+				col,
+				destination.GetRow(),
+				destination.GetColumn(),
+				promotion);
+			RefreshStatus("Computer moved");
+			return true;
+		}
+	}
+	RefreshStatus();
+	return false;
+}
+
+const ChessBoard & ChessSession::Board() const { return game_.Board(); }
+PieceColor ChessSession::Turn() const noexcept { return game_.Turn(); }
+GameStatus ChessSession::GameState() const noexcept { return game_.Status(); }
 const std::set<BoardPosition> & ChessSession::LegalMoves() const noexcept
 {
 	return legal_moves_;
 }
-
 const std::optional<BoardPosition> & ChessSession::Selected() const noexcept
 {
 	return selected_;
 }
-
-const std::string & ChessSession::Status() const noexcept
+const std::string & ChessSession::Status() const noexcept { return status_; }
+const std::string & ChessSession::CurrentFile() const noexcept
 {
-	return status_;
+	return game_.CurrentFile();
 }
 
 bool ChessSession::IsCaptureTarget(int row, int col) const
 {
-	return game_.isValidMove(row, col) && game_.isCellTaken(row, col);
+	if (!game_.isValidMove(row, col)) {
+		return false;
+	}
+	if (game_.isCellTaken(row, col)) {
+		return true;
+	}
+	const Piece * selected_piece = selected_
+		? game_.Board().GetPiece(selected_->GetRow(), selected_->GetColumn())
+		: nullptr;
+	return selected_piece && selected_piece->GetType() == PAWN
+		&& selected_->GetColumn() != col;
+}
+
+bool ChessSession::HasPendingPromotion() const noexcept
+{
+	return pending_promotion_.has_value();
+}
+
+ChessSession::PlayerKind ChessSession::PlayerFor(PieceColor color) const noexcept
+{
+	return color == WHITE ? white_player_ : black_player_;
 }
 
 void ChessSession::SelectPiece(int row, int col)
 {
-	game_.GetPiece(row, col, turn_);
+	game_.GetPiece(row, col, game_.Turn());
 	selected_.emplace(row, col);
 	legal_moves_ = game_.GetValidMoves();
-	status_ = TurnStatus(turn_) + " — "
+	status_ = StateStatus(game_) + " — "
 		+ std::to_string(legal_moves_.size()) + " legal move";
 	if (legal_moves_.size() != 1) {
 		status_ += "s";
@@ -128,22 +249,7 @@ void ChessSession::ClearSelection()
 	legal_moves_.clear();
 }
 
-void ChessSession::UpdateStatusAfterMove(int row, int col, bool captured)
+void ChessSession::RefreshStatus(const std::string & prefix)
 {
-	const bool check = game_.Check(row, col);
-	const bool mate = game_.Mate(row, col);
-	turn_ = turn_ == WHITE ? BLACK : WHITE;
-
-	if (mate) {
-		game_active_ = false;
-		status_ = check ? "Checkmate" : "Stalemate";
-		return;
-	}
-
-	status_ = TurnStatus(turn_);
-	if (check) {
-		status_ += " — check";
-	} else if (captured) {
-		status_ += " — piece captured";
-	}
+	status_ = prefix.empty() ? StateStatus(game_) : prefix + " — " + StateStatus(game_);
 }
