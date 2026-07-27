@@ -9,8 +9,9 @@ application. The current GUI is built directly in C++ with `Gtk::Application`,
 
 - `model/` and `utils/` form `chess_core` and have no GTK dependency.
 - `gui/src/ChessSession.cpp` is a display-independent interaction layer. It
-  owns `GameFacade` and coordinates selection, legal moves, turns, captures,
-  undo, new game, check, checkmate, and stalemate.
+  owns `GameFacade` and coordinates selection, explicit promotion, player
+  modes, and file-path behavior. Rules and persistent game state stay in the
+  GTK-independent facade.
 - `ChessBoardView` renders model state and reports cell clicks through
   `Gtk::GestureClick`; it does not implement chess rules or copy the board.
 - `ChessWindow` owns application actions, menus, status presentation, and the
@@ -30,9 +31,29 @@ pointers or references. Moves and temporary move simulations transfer
 ownership explicitly, including ownership of captured pieces.
 
 Move generation returns `std::set<BoardPosition>` by value. `GameFacade` owns
-its board, valid-move set, undo result, and move history with RAII types.
-History entries contain piece snapshots and coordinates rather than pointers
-to live pieces, so undo can safely reconstruct a captured piece.
+the board, turn, castling rights, en-passant target, halfmove/fullmove clocks,
+repetition keys, terminal status, and move history with RAII types. History
+entries contain value snapshots and the pre-move special state, so ordinary
+moves, captures, castling, en passant, and all four promotion choices can be
+undone exactly.
+
+The core enforces check safety, checkmate, stalemate, threefold repetition, the
+fifty-move rule, and the standard insufficient-material cases. Terminal games
+reject further moves but remain undoable.
+
+## Save format
+
+New saves are UTF-8 XML with a `<chessgame version="2">` root. They include:
+
+- current board, side to move, castling rights, en-passant target, clocks;
+- complete undo history, including special-move and prior-state metadata;
+- repetition keys required to preserve draw detection after loading.
+
+Writes use a sibling temporary file followed by an atomic rename. Loads parse
+and validate into a temporary state before replacing the active game. Failed
+reads therefore leave the board, turn, history, and current file unchanged.
+The reader also accepts the repository's original unversioned format,
+including the historical `-<chessgame>` / `-<board>` prefixes in `try.xml`.
 
 ## Requirements
 
@@ -76,21 +97,19 @@ meson test -C build-gui
 ./build-gui/chess-game
 ```
 
-The application supports click-to-select, legal-move and capture highlighting,
-move/capture, undo, new game, turn and terminal-state status, save, quit, and
-an about dialog. Common shortcuts are:
+The application supports legal-move/capture highlighting, explicit promotion
+choice, castling and en passant, undo, new game, complete turn/check/draw
+status, current-file status, four human/computer combinations, Save, Save As,
+Load, quit, and an about dialog. The deliberately simple computer player
+chooses a legal move deterministically and explicitly chooses a queen when it
+promotes. Common shortcuts are:
 
 - New game: `Command-N` on macOS, `Ctrl-N` on Linux
 - Undo: `Command-Z` / `Ctrl-Z`
 - Save: `Command-S` / `Ctrl-S`
+- Save As: `Command-Shift-S` / `Ctrl-Shift-S`
 - Load: `Command-O` / `Ctrl-O`
 - Quit: `Command-Q` / `Ctrl-Q`
-
-The Load action deliberately reports that loading is unavailable because the
-current core's `GameFacade::LoadGame()` is still a stub. The legacy computer
-player/controller is not connected to the new application, so the current GUI
-is human-versus-human only. Castling, promotion, and en passant remain subject
-to the existing core's legacy rule set; the GTK layer does not invent them.
 
 ## Sanitizers
 
@@ -107,5 +126,8 @@ meson test -C build-sanitize
 ```
 
 All targets use strict compiler warnings with `warning_level=3` and
-`werror=true`. The tests cover core ownership and movement behavior plus the
-display-independent click, highlight, move, capture, undo, and new-game flow.
+`werror=true`. Tests cover piece boundaries, turn enforcement, check filtering,
+mate/stalemate, draw rules, every special move and undo, terminal undo, new
+game, XML round trips and legacy compatibility, invalid/unavailable paths,
+atomic failed loads, Save/Save As path behavior, selection clearing, promotion,
+and all player combinations.
