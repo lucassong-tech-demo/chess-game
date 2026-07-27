@@ -119,6 +119,14 @@ ZIP with `scripts/package-macos.sh`; add `--dmg` to also create a DMG. See
 Developer ID signing, and notarization steps. Local artifacts are written
 under the Git-ignored `dist/macos/` directory.
 
+## Linux verification and delivery
+
+On elementary OS 8.1 / Ubuntu 24.04, run `scripts/verify-linux.sh` for a
+Release build, tests, ELF dependency checks, and a GUI startup probe. Run
+`scripts/package-linux-deb.sh` to create a local Debian package under
+`dist/linux/`. See [`docs/linux-delivery.md`](docs/linux-delivery.md) for
+installation and manual acceptance steps.
+
 ## Sanitizers
 
 AddressSanitizer and UndefinedBehaviorSanitizer can be enabled in a separate
