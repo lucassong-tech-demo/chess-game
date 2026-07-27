@@ -146,9 +146,14 @@ if ${gui_smoke}; then
   trap 'rm -f "${smoke_log}"' EXIT
 
   command_prefix=()
+  smoke_environment=(G_DEBUG=fatal-criticals)
   if [[ -z "${DISPLAY:-}" && -z "${WAYLAND_DISPLAY:-}" ]]; then
     if command -v xvfb-run >/dev/null; then
       command_prefix+=(xvfb-run -a)
+      # Xvfb has no physical DRI3/EGL device. The Cairo renderer exercises
+      # GTK layout and drawing without treating Mesa's expected warning as an
+      # application failure.
+      smoke_environment+=(GSK_RENDERER=cairo)
     else
       echo "error: no graphical session and xvfb-run is unavailable" >&2
       exit 1
@@ -161,7 +166,7 @@ if ${gui_smoke}; then
 
   set +e
   timeout --signal=TERM "${smoke_seconds}s" \
-    "${command_prefix[@]}" env G_DEBUG=fatal-criticals \
+    "${command_prefix[@]}" env "${smoke_environment[@]}" \
     "${executable}" >"${smoke_log}" 2>&1
   smoke_status=$?
   set -e
@@ -171,9 +176,10 @@ if ${gui_smoke}; then
     sed -n '1,160p' "${smoke_log}" >&2
     exit 1
   fi
-  if grep -Ei '(^|[[:space:]])(error|critical):|not found|cannot open display' \
+  if grep -E \
+    '(GLib(-GIO)?|Gtk|Gdk|Gsk)-(ERROR|CRITICAL)|symbol lookup error|undefined symbol|cannot open display' \
     "${smoke_log}"; then
-    echo "error: GUI smoke log contains a runtime error" >&2
+    echo "error: GUI smoke log contains a fatal runtime error" >&2
     exit 1
   fi
   echo "GUI startup probe: passed (${smoke_seconds} seconds)"

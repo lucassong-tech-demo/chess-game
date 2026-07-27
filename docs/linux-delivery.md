@@ -34,6 +34,8 @@ application is a supported 64-bit ELF, checks `ldd` for missing libraries,
 rejects source/build RPATHs, uses `gresource` to verify the embedded CSS and
 all 12 piece images, and verifies that the GTK process stays alive for eight
 seconds. It uses the current X11/Wayland session, or `xvfb-run` when headless.
+Headless probes select GTK's Cairo software renderer so they do not require a
+physical DRI3/EGL device.
 
 For normal development:
 
