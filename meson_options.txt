@@ -1,0 +1,6 @@
+option(
+  'gui',
+  type: 'feature',
+  value: 'auto',
+  description: 'Build the GTKmm 4 graphical application',
+)

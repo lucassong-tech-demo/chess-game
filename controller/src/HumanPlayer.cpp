@@ -4,15 +4,15 @@
 HumanPlayer::HumanPlayer(PieceColor color, GameFacade & gf) {
 	this->color = color;  // white = 0, black = 1;
 	game = &gf;
-	move_choices = '\0';
-	myPiece = '\0';
+	move_choices = nullptr;
+	myPiece = nullptr;
 }
 
 HumanPlayer::~HumanPlayer() {
 	
 }
 	
-void HumanPlayer::on_CellSelected(int row, int col, int button) {
+void HumanPlayer::on_CellSelected(int row, int col, int) {
 
 	myPiece = game->GetPiece(row, col, color);
 	
@@ -60,5 +60,4 @@ bool HumanPlayer::isTaken(int row, int col) {
 void HumanPlayer::PlacePiece(int row_selected, int col_selected, int row, int col) {
 	game->MovePiece(row_selected, col_selected, row, col);
 }
-
 

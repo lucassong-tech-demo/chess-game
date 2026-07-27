@@ -1,0 +1,71 @@
+window {
+  background: #f5f2eb;
+}
+
+.title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.board-frame {
+  background: #332c29;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.chess-board {
+  background: #332c29;
+}
+
+.board-cell {
+  min-width: 48px;
+  min-height: 48px;
+  padding: 4px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.board-cell.light {
+  background: #e8d7b7;
+}
+
+.board-cell.dark {
+  background: #8a6247;
+}
+
+.board-cell:hover {
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.34);
+}
+
+.board-cell.selected {
+  box-shadow: inset 0 0 0 5px #2d8a55;
+}
+
+.board-cell.legal {
+  background-image: radial-gradient(
+    circle,
+    rgba(42, 117, 74, 0.82) 0%,
+    rgba(42, 117, 74, 0.82) 17%,
+    transparent 19%
+  );
+}
+
+.board-cell.capture {
+  box-shadow: inset 0 0 0 5px #c94a4a;
+}
+
+.status {
+  color: #2f2a27;
+  font-size: 1.05rem;
+  font-weight: 650;
+}
+
+.status.error {
+  color: #a12b2b;
+}
+
+.help {
+  color: #716964;
+  font-size: 0.9rem;
+}

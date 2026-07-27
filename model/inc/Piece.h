@@ -1,10 +1,9 @@
 #ifndef PIECE_H
 #define PIECE_H
 
-#include <iostream>
-#include <string>
 #include <set>
-#include <cassert>
+#include <string>
+
 #include "BoardPosition.h"
 
 enum PieceType {
@@ -16,49 +15,33 @@ enum PieceColor {
 };
 
 class ChessBoard;
-/**
- * Piece class is a super class all kinds of Piece. It has six differenct subclasses
- * , such as King subtype class. Pawn subtype class, Bishop subtype class, and so on.
- * All these subtype classes inheret from Piece class directly.
- * Piece class encapulates a piece' type, color, position on the board.
- * It also can finds out the available paths depending on the rules of each piece. 
- */
+
 class Piece
 {
-protected:
-	PieceType type;  // the type of Piece
-	PieceColor color; // color: white/black
-	int row;
-	int column;
-
 public:
 	Piece(PieceType type, PieceColor color, int row, int column);
+	virtual ~Piece() = default;
+	Piece(const Piece &) = delete;
+	Piece & operator=(const Piece &) = delete;
+	Piece(Piece &&) = delete;
+	Piece & operator=(Piece &&) = delete;
 
-	virtual ~Piece(){}
+	PieceType GetType() const noexcept;
+	PieceColor GetColor() const noexcept;
+	std::string Type_String() const;
+	std::string Color_String() const;
+	int GetRow() const noexcept;
+	int GetColumn() const noexcept;
+	void Update_location(int row, int col);
 
-	PieceType GetType() const;
+	// Move sets are independent values. Callers never observe piece-owned storage.
+	virtual std::set<BoardPosition> GetValidMove(const ChessBoard & board) const = 0;
 
-	PieceColor GetColor() const;
-
-	std::string Type_String();
-
-	std::string Color_String();
-
-	int GetRow() const;
-
-	int GetColumn() const;
-
-	void Update_location(const int r, const int col);
-	/**
-	 * Find out the available paths (cells). Encapsulate each cell location 
-	 * into a BoardPosition class. Put all these BoardPosition object
-	 * into a set so that ChessController and Highlight them.
-	 */
-	virtual std::set<BoardPosition> & GetValidMove(ChessBoard * board) = 0; 
-
-
-
+protected:
+	PieceType type;
+	PieceColor color;
+	int row;
+	int column;
 };
 
 #endif
-

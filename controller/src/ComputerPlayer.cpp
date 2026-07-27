@@ -4,8 +4,8 @@
 ComputerPlayer::ComputerPlayer(PieceColor color, GameFacade & gf) {
 	this->color = color;  // white = 0, black = 1;
 	game = &gf;
-	move_choices = '\0';
-	myPiece = '\0';
+	move_choices = nullptr;
+	myPiece = nullptr;
 	row = -1;
 	col = -1;
 	
@@ -15,7 +15,7 @@ ComputerPlayer::~ComputerPlayer() {
 
 }
 	
-void ComputerPlayer::on_CellSelected(int row, int col, int button) {
+void ComputerPlayer::on_CellSelected(int, int, int) {
 
 	return;
 }
@@ -34,7 +34,7 @@ void ComputerPlayer::on_TimerEvent() {
 			move_choices = &(game->GetValidMoves());
 		
 			if (move_choices->size() == 0) {
-				move_choices = '\0';
+				move_choices = nullptr;
 			}
 		}
 	
@@ -83,4 +83,3 @@ void ComputerPlayer::PlacePiece(int row_selected, int col_selected, int row, int
 	
 	game->MovePiece(row_selected, col_selected, row, col);
 }
-

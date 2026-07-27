@@ -1,8 +1,14 @@
 #include "BoardPosition.h"
 
-BoardPosition::BoardPosition(const BoardPosition & other) {
-	row = other.row;
-	column = other.column;
+#include <stdexcept>
+
+BoardPosition::BoardPosition(int position_row, int position_column)
+	: row(position_row),
+	  column(position_column)
+{
+	if (row < 0 || row >= 8 || column < 0 || column >= 8) {
+		throw std::out_of_range("board coordinates must be between 0 and 7");
+	}
 }
 
 
