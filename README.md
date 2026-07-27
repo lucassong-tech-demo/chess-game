@@ -111,6 +111,14 @@ promotes. Common shortcuts are:
 - Load: `Command-O` / `Ctrl-O`
 - Quit: `Command-Q` / `Ctrl-Q`
 
+## macOS delivery
+
+On Apple Silicon macOS, create a relocatable, ad-hoc-signed Release app and
+ZIP with `scripts/package-macos.sh`; add `--dmg` to also create a DMG. See
+[`docs/macos-delivery.md`](docs/macos-delivery.md) for artifact acceptance,
+Developer ID signing, and notarization steps. Local artifacts are written
+under the Git-ignored `dist/macos/` directory.
+
 ## Sanitizers
 
 AddressSanitizer and UndefinedBehaviorSanitizer can be enabled in a separate
