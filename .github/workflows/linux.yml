@@ -16,14 +16,28 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes \
+            binutils \
+            dbus-x11 \
+            desktop-file-utils \
+            dpkg-dev \
+            file \
             g++-13 \
             libgtkmm-4.0-dev \
             meson \
             ninja-build \
-            pkg-config
-      - name: Configure
-        run: meson setup build-linux -Dgui=enabled
-      - name: Build
-        run: meson compile -C build-linux
-      - name: Test
-        run: meson test -C build-linux --print-errorlogs
+            pkg-config \
+            xvfb
+      - name: Verify Linux Release build
+        run: scripts/verify-linux.sh --build-dir build-linux
+      - name: Build Debian package
+        run: >
+          scripts/package-linux-deb.sh
+          --build-dir build-linux
+          --output-dir dist/linux
+          --skip-build
+      - name: Upload unsigned Debian test artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chess-game-ubuntu-24.04-amd64-deb
+          path: dist/linux/*.deb
+          if-no-files-found: error
