@@ -68,6 +68,50 @@ for tool in meson otool install_name_tool codesign ditto sips realpath \
     { echo "error: required tool not found: ${tool}" >&2; exit 1; }
 done
 
+normalize_path() {
+  local input="$1"
+  local component
+  local normalized=""
+  local probe
+  local suffix=""
+  local resolved
+  local -a components=()
+  local -a stack=()
+
+  case "${input}" in
+    /*) ;;
+    *) input="${source_dir}/${input}" ;;
+  esac
+
+  IFS='/' read -r -a components <<<"${input}"
+  for component in "${components[@]}"; do
+    case "${component}" in
+      ''|.) ;;
+      ..)
+        if [[ ${#stack[@]} -gt 0 ]]; then
+          unset "stack[${#stack[@]}-1]"
+        fi
+        ;;
+      *) stack+=("${component}") ;;
+    esac
+  done
+  for component in "${stack[@]}"; do
+    normalized="${normalized}/${component}"
+  done
+  [[ -n "${normalized}" ]] || normalized="/"
+
+  probe="${normalized}"
+  while [[ ! -e "${probe}" ]]; do
+    suffix="/$(basename "${probe}")${suffix}"
+    probe="$(dirname "${probe}")"
+  done
+  resolved="$(realpath "${probe}")"
+  printf '%s%s\n' "${resolved}" "${suffix}"
+}
+
+build_dir="$(normalize_path "${build_dir}")"
+output_dir="$(normalize_path "${output_dir}")"
+
 case "${output_dir}" in
   "${source_dir}"/*) ;;
   *)
