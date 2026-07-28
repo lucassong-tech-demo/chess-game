@@ -252,6 +252,43 @@ void TestCastlingAndUndo()
 	}, WHITE);
 	Check(!HasMove(game.LegalMoves(7, 4), 7, 6),
 		"castling through an attacked square is illegal");
+
+	game.SetPosition({
+		PieceAt(KING, WHITE, 7, 4),
+		PieceAt(ROOK, WHITE, 7, 0),
+		PieceAt(KING, BLACK, 0, 4),
+	}, WHITE);
+	game.MovePiece(7, 4, 7, 2);
+	Check(game.Board().GetPiece(7, 2)->GetType() == KING
+			&& game.Board().GetPiece(7, 3)->GetType() == ROOK,
+		"queen-side castling moves both king and rook");
+	game.Undo();
+	Check(game.Board().GetPiece(7, 4)->GetType() == KING
+			&& game.Board().GetPiece(7, 0)->GetType() == ROOK,
+		"queen-side castling undo restores both pieces");
+
+	game.SetPosition({
+		PieceAt(KING, WHITE, 7, 4),
+		PieceAt(ROOK, WHITE, 7, 7),
+		PieceAt(KING, BLACK, 0, 0),
+		PieceAt(ROOK, BLACK, 5, 4),
+	}, WHITE);
+	Check(!HasMove(game.LegalMoves(7, 4), 7, 6),
+		"castling while the king is in check is illegal");
+
+	game.SetPosition({
+		PieceAt(KING, WHITE, 7, 4),
+		PieceAt(ROOK, WHITE, 7, 7),
+		PieceAt(KING, BLACK, 0, 4),
+	}, WHITE);
+	game.MovePiece(7, 7, 6, 7);
+	Check(!game.Castling().white_king_side
+			&& game.Castling().white_queen_side,
+		"moving a rook clears only its own castling right");
+	game.Undo();
+	Check(game.Castling().white_king_side
+			&& game.Castling().white_queen_side,
+		"undoing a rook move restores its castling right");
 }
 
 void TestEnPassantAndUndo()
@@ -280,6 +317,28 @@ void TestEnPassantAndUndo()
 	Check(game.EnPassantTarget()
 			&& *game.EnPassantTarget() == BoardPosition(2, 3),
 		"en passant undo restores the transient target");
+
+	game.SetPosition({
+		PieceAt(KING, WHITE, 7, 4),
+		PieceAt(KING, BLACK, 0, 4),
+		PieceAt(PAWN, WHITE, 3, 4),
+		PieceAt(PAWN, BLACK, 1, 3),
+	}, BLACK, {false, false, false, false});
+	game.MovePiece(1, 3, 3, 3);
+	game.MovePiece(7, 4, 7, 5);
+	Check(!game.EnPassantTarget(),
+		"en passant expires when the adjacent pawn does not capture immediately");
+
+	game.SetPosition({
+		PieceAt(KING, WHITE, 7, 4),
+		PieceAt(PAWN, WHITE, 3, 4),
+		PieceAt(KING, BLACK, 0, 0),
+		PieceAt(ROOK, BLACK, 0, 4),
+		PieceAt(PAWN, BLACK, 1, 3),
+	}, BLACK, {false, false, false, false});
+	game.MovePiece(1, 3, 3, 3);
+	Check(!HasMove(game.LegalMoves(3, 4), 2, 3),
+		"en passant is illegal when it would expose the moving side's king");
 }
 
 void TestPromotionAndUndo()
@@ -303,6 +362,34 @@ void TestPromotionAndUndo()
 	Check(game.Board().GetPiece(1, 0)->GetType() == PAWN
 			&& game.Board().GetPiece(0, 0) == nullptr,
 		"promotion undo restores the pawn");
+
+	for (const PieceType type : {QUEEN, ROOK, BISHOP, KNIGHT}) {
+		game.SetPosition({
+			PieceAt(KING, WHITE, 7, 4),
+			PieceAt(KING, BLACK, 0, 4),
+			PieceAt(PAWN, WHITE, 1, 1),
+		}, WHITE, {false, false, false, false});
+		game.MovePiece(1, 1, 0, 1, type);
+		Check(game.Board().GetPiece(0, 1)->GetType() == type,
+			"each explicit promotion choice creates the requested piece");
+		game.Undo();
+		Check(game.Board().GetPiece(1, 1)->GetType() == PAWN,
+			"each explicit promotion choice remains undoable");
+	}
+
+	game.SetPosition({
+		PieceAt(KING, WHITE, 7, 4),
+		PieceAt(KING, BLACK, 0, 4),
+		PieceAt(PAWN, WHITE, 1, 1),
+		PieceAt(ROOK, BLACK, 0, 2),
+	}, WHITE, {false, false, false, false});
+	game.MovePiece(1, 1, 0, 2, QUEEN);
+	Check(game.Board().GetPiece(0, 2)->GetType() == QUEEN,
+		"a pawn can capture and promote in one move");
+	game.Undo();
+	Check(game.Board().GetPiece(1, 1)->GetType() == PAWN
+			&& game.Board().GetPiece(0, 2)->GetType() == ROOK,
+		"capture-promotion undo restores both pawn and captured piece");
 }
 
 void TestDrawRules()
@@ -331,10 +418,59 @@ void TestDrawRules()
 
 	game.SetPosition({
 		PieceAt(KING, WHITE, 7, 4),
+		PieceAt(PAWN, WHITE, 6, 0),
+		PieceAt(KING, BLACK, 0, 4),
+	}, WHITE, {false, false, false, false}, std::nullopt, 99, 50);
+	game.MovePiece(6, 0, 5, 0);
+	Check(game.HalfmoveClock() == 0
+			&& game.Status() != GameStatus::DrawFiftyMove,
+		"a pawn move resets the fifty-move halfmove clock");
+
+	game.SetPosition({
+		PieceAt(KING, WHITE, 7, 4),
+		PieceAt(ROOK, WHITE, 6, 0),
+		PieceAt(KING, BLACK, 0, 4),
+		PieceAt(KNIGHT, BLACK, 5, 0),
+	}, WHITE, {false, false, false, false}, std::nullopt, 99, 50);
+	game.MovePiece(6, 0, 5, 0);
+	Check(game.HalfmoveClock() == 0
+			&& game.Status() != GameStatus::DrawFiftyMove,
+		"a capture resets the fifty-move halfmove clock");
+
+	game.SetPosition({
+		PieceAt(KING, WHITE, 7, 4),
 		PieceAt(KING, BLACK, 0, 4),
 	}, WHITE, {false, false, false, false});
 	Check(game.Status() == GameStatus::DrawInsufficientMaterial,
 		"king versus king is insufficient material");
+
+	for (const PieceType type : {BISHOP, KNIGHT}) {
+		game.SetPosition({
+			PieceAt(KING, WHITE, 7, 4),
+			PieceAt(type, WHITE, 5, 2),
+			PieceAt(KING, BLACK, 0, 4),
+		}, WHITE, {false, false, false, false});
+		Check(game.Status() == GameStatus::DrawInsufficientMaterial,
+			"king and one minor piece versus king is insufficient material");
+	}
+
+	game.SetPosition({
+		PieceAt(KING, WHITE, 7, 4),
+		PieceAt(BISHOP, WHITE, 6, 3),
+		PieceAt(KING, BLACK, 0, 4),
+		PieceAt(BISHOP, BLACK, 1, 2),
+	}, WHITE, {false, false, false, false});
+	Check(game.Status() == GameStatus::DrawInsufficientMaterial,
+		"bishops confined to one square color are insufficient material");
+
+	game.SetPosition({
+		PieceAt(KING, WHITE, 7, 4),
+		PieceAt(BISHOP, WHITE, 6, 3),
+		PieceAt(KING, BLACK, 0, 4),
+		PieceAt(BISHOP, BLACK, 1, 3),
+	}, WHITE, {false, false, false, false});
+	Check(game.Status() != GameStatus::DrawInsufficientMaterial,
+		"opposite-colored bishops are not automatically insufficient material");
 }
 
 void TestSaveRoundTripAndAtomicFailures()
