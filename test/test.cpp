@@ -8,6 +8,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "Bishop.h"
@@ -133,6 +134,33 @@ void TestPieceBoundaries()
 	moves = board.GetPiece(6, 3)->GetValidMove(board);
 	Check(HasMove(moves, 5, 2) && HasMove(moves, 5, 4),
 		"pawn captures diagonally at both board-safe offsets");
+}
+
+void TestChessBoardOwnership()
+{
+	ChessBoard board;
+	Check(board.GetPiece(1, 0)
+			&& board.GetPiece(1, 0)->GetType() == PAWN
+			&& board.GetPiece(1, 0)->GetColor() == BLACK,
+		"the initial board contains the expected black pawn");
+
+	auto captured = board.MovePiece(1, 0, 2, 1);
+	Check(!captured && board.GetPiece(1, 0) == nullptr
+			&& board.GetPiece(2, 1)->GetType() == PAWN,
+		"moving to an empty square transfers the pawn without a capture");
+
+	captured = board.MovePiece(0, 1, 2, 1);
+	Check(captured && captured->GetType() == PAWN
+			&& board.GetPiece(2, 1)->GetType() == KNIGHT,
+		"a capture transfers ownership of the displaced piece");
+	board.RestoreMove(0, 1, 2, 1, std::move(captured));
+	Check(board.GetPiece(0, 1)->GetType() == KNIGHT
+			&& board.GetPiece(2, 1)->GetType() == PAWN,
+		"restoring a capture returns both pieces to their original squares");
+
+	board.ClearBoard();
+	Check(board.GetPiece(2, 1) == nullptr,
+		"clearing the board releases all owned pieces");
 }
 
 void TestTurnLegalityAndCheckFilter()
@@ -441,6 +469,7 @@ void TestLegacyFixtureAndNewGame()
 int main()
 {
 	TestPieceBoundaries();
+	TestChessBoardOwnership();
 	TestTurnLegalityAndCheckFilter();
 	TestCheckmateStalemateAndTerminalUndo();
 	TestCastlingAndUndo();

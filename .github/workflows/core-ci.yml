@@ -30,11 +30,13 @@ jobs:
             arch: arm64
             cc: clang
             cxx: clang++
+            detect_leaks: 0
           - name: Ubuntu 24.04 / x86_64 / GCC
             runner: ubuntu-24.04
             arch: x86_64
             cc: gcc
             cxx: g++
+            detect_leaks: 1
 
     steps:
       - name: Check out source
@@ -80,8 +82,8 @@ jobs:
 
       - name: Test with sanitizers
         env:
-          # LeakSanitizer is outside this ASan/UBSan baseline and is unsupported
-          # by Apple's bundled sanitizer runtime.
-          ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
+          # Apple's bundled sanitizer runtime does not support LeakSanitizer;
+          # the Linux job treats leaks as sanitizer failures.
+          ASAN_OPTIONS: detect_leaks=${{ matrix.detect_leaks }}:halt_on_error=1
           UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
         run: meson test -C build-sanitize --print-errorlogs

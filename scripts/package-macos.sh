@@ -161,7 +161,7 @@ cat >"${app}/Contents/Info.plist" <<EOF
 EOF
 plutil -lint "${app}/Contents/Info.plist"
 
-icon_source="${source_dir}/view/images/wking.png"
+icon_source="${source_dir}/gui/resources/icons/app-icon.png"
 sips -s format icns "${icon_source}" --out "${resources}/Chess.icns" >/dev/null
 
 queue_file="$(mktemp "${TMPDIR:-/tmp}/chess-dylibs.XXXXXX")"

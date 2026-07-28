@@ -114,7 +114,7 @@ trap cleanup EXIT
 
 install -Dm755 "${build_dir}/chess-game" "${staging}/usr/bin/chess-game"
 strip "${staging}/usr/bin/chess-game"
-install -Dm644 "${source_dir}/view/images/wking.png" \
+install -Dm644 "${source_dir}/gui/resources/icons/app-icon.png" \
   "${staging}/usr/share/icons/hicolor/128x128/apps/io.github.chess_game.png"
 install -Dm644 "${source_dir}/LICENSE" \
   "${staging}/usr/share/doc/${package_name}/copyright"

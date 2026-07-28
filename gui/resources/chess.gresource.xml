@@ -2,17 +2,17 @@
 <gresources>
   <gresource prefix="/io/github/chess_game">
     <file>chess.css</file>
-    <file alias="pieces/bbishop.png">../../view/images/bbishop.png</file>
-    <file alias="pieces/bking.png">../../view/images/bking.png</file>
-    <file alias="pieces/bknight.png">../../view/images/bknight.png</file>
-    <file alias="pieces/bpawn.png">../../view/images/bpawn.png</file>
-    <file alias="pieces/bqueen.png">../../view/images/bqueen.png</file>
-    <file alias="pieces/brook.png">../../view/images/brook.png</file>
-    <file alias="pieces/wbishop.png">../../view/images/wbishop.png</file>
-    <file alias="pieces/wking.png">../../view/images/wking.png</file>
-    <file alias="pieces/wknight.png">../../view/images/wknight.png</file>
-    <file alias="pieces/wpawn.png">../../view/images/wpawn.png</file>
-    <file alias="pieces/wqueen.png">../../view/images/wqueen.png</file>
-    <file alias="pieces/wrook.png">../../view/images/wrook.png</file>
+    <file>pieces/bbishop.png</file>
+    <file>pieces/bking.png</file>
+    <file>pieces/bknight.png</file>
+    <file>pieces/bpawn.png</file>
+    <file>pieces/bqueen.png</file>
+    <file>pieces/brook.png</file>
+    <file>pieces/wbishop.png</file>
+    <file>pieces/wking.png</file>
+    <file>pieces/wknight.png</file>
+    <file>pieces/wpawn.png</file>
+    <file>pieces/wqueen.png</file>
+    <file>pieces/wrook.png</file>
   </gresource>
 </gresources>

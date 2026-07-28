@@ -12,7 +12,6 @@ project(
 
 core_includes = include_directories(
   'model/inc',
-  'utils/include',
 )
 
 core_sources = files(

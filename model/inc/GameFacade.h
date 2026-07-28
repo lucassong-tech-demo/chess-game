@@ -1,7 +1,6 @@
 #ifndef GAME_FACADE_H
 #define GAME_FACADE_H
 
-#include <iostream>
 #include <memory>
 #include <optional>
 #include <set>
@@ -75,8 +74,6 @@ public:
 		std::optional<BoardPosition> en_passant = std::nullopt,
 		unsigned halfmove_clock = 0,
 		unsigned fullmove_number = 1);
-
-	static bool Test(std::ostream & os);
 
 private:
 	std::unique_ptr<ChessBoard> board_;
