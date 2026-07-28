@@ -4,7 +4,9 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 
+#include "ChessPresentation.h"
 #include "ChessSession.h"
 
 namespace {
@@ -37,6 +39,22 @@ bool HasMove(const ChessSession & session, int row, int col)
 	return session.LegalMoves().contains(BoardPosition(row, col));
 }
 
+void TestBoardLegend()
+{
+	const std::string_view legend = ChessPresentation::BoardLegend;
+	const auto mentions = [legend](std::string_view text) {
+		return legend.find(text) != std::string_view::npos;
+	};
+	Check(mentions("selected piece") && mentions("Gold"),
+		"the board legend explains the selected-square treatment");
+	Check(mentions("green squares") && mentions("legal moves"),
+		"the board legend explains ordinary legal destinations");
+	Check(mentions("red borders") && mentions("captures"),
+		"the board legend explains capture destinations");
+	Check(!mentions("highlighted square"),
+		"the board legend avoids an unexplained highlighted-square instruction");
+}
+
 std::filesystem::path TempPath(const std::string & name)
 {
 	const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
@@ -53,6 +71,24 @@ void TestSelectionTurnsUndoAndNew()
 		"clicking the current side selects a piece");
 	Check(HasMove(session, 5, 4) && HasMove(session, 4, 4),
 		"selection exposes only legal destinations");
+	Check(session.Selected()
+			&& session.Selected()->GetRow() == 6
+			&& session.Selected()->GetColumn() == 4,
+		"a selected piece retains its light-square source position");
+	Check(!session.IsCaptureTarget(6, 4),
+		"the selected source is not presented as a capture destination");
+
+	Check(
+		session.SelectCell(6, 1) == ChessSession::Interaction::SelectionChanged,
+		"clicking another current-side piece changes the selection");
+	Check(session.Selected()
+			&& session.Selected()->GetRow() == 6
+			&& session.Selected()->GetColumn() == 1,
+		"a selected piece retains its dark-square source position");
+	Check(!HasMove(session, 6, 1) && !session.IsCaptureTarget(6, 1),
+		"the selected source remains distinct from legal and capture targets");
+
+	session.SelectCell(6, 4);
 	Check(
 		session.SelectCell(1, 0) == ChessSession::Interaction::Ignored,
 		"an invalid target is ignored");
@@ -255,6 +291,7 @@ void TestModeSwitchContinuousPromotionUndo()
 
 int main()
 {
+	TestBoardLegend();
 	TestSelectionTurnsUndoAndNew();
 	TestPromotionWorkflow();
 	TestSaveLoadPathSemantics();

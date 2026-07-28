@@ -4,6 +4,7 @@
 #include <gtkmm.h>
 
 #include "ChessBoardView.h"
+#include "ChessPresentation.h"
 #include "ChessSession.h"
 
 class ChessWindow : public Gtk::ApplicationWindow
@@ -20,7 +21,7 @@ private:
 	ChessBoardView board_view_;
 	Gtk::Label status_label_;
 	Gtk::Label file_label_;
-	Gtk::Label help_label_{"Select a piece, then choose a highlighted square."};
+	Gtk::Label help_label_{ChessPresentation::BoardLegend};
 	Gtk::AboutDialog about_dialog_;
 	Glib::RefPtr<Gtk::FileDialog> save_dialog_;
 	Glib::RefPtr<Gtk::FileDialog> load_dialog_;

@@ -97,12 +97,13 @@ meson test -C build-gui
 ./build-gui/chess-game
 ```
 
-The application supports legal-move/capture highlighting, explicit promotion
-choice, castling and en passant, undo, new game, complete turn/check/draw
-status, current-file status, four human/computer combinations, Save, Save As,
-Load, quit, and an about dialog. The deliberately simple computer player
-chooses a legal move deterministically and explicitly chooses a queen when it
-promotes. Common shortcuts are:
+The application marks the selected piece with a gold square, ordinary legal
+moves with green squares, and captures with red borders. It also supports explicit
+promotion choice, castling and en passant, undo, new game, complete
+turn/check/draw status, current-file status, four human/computer combinations,
+Save, Save As, Load, quit, and an about dialog. The deliberately simple computer
+player chooses a legal move deterministically and explicitly chooses a queen
+when it promotes. Common shortcuts are:
 
 - New game: `Command-N` on macOS, `Ctrl-N` on Linux
 - Undo: `Command-Z` / `Ctrl-Z`
