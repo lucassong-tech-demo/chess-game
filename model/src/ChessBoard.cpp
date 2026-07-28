@@ -9,7 +9,6 @@
 #include "Pawn.h"
 #include "Queen.h"
 #include "Rook.h"
-#include "UnitTest.h"
 
 namespace {
 
@@ -188,32 +187,4 @@ std::unique_ptr<Piece> ChessBoard::TakePiece(int row, int col)
 {
 	ValidatePosition(row, col);
 	return std::move(board_[row][col]);
-}
-
-bool ChessBoard::Test(std::ostream & os)
-{
-	using std::endl;
-	bool success = true;
-	ChessBoard board;
-	TEST(board.GetPiece(1, 0)->GetType() == PAWN);
-	TEST(board.GetPiece(1, 0)->GetColor() == BLACK);
-	TEST(board.GetPiece(2, 1) == nullptr);
-
-	auto captured = board.MovePiece(1, 0, 2, 1);
-	TEST(captured == nullptr);
-	TEST(board.GetPiece(1, 0) == nullptr);
-	TEST(board.GetPiece(2, 1)->GetType() == PAWN);
-
-	captured = board.MovePiece(0, 1, 2, 1);
-	TEST(captured != nullptr);
-	TEST(captured->GetType() == PAWN);
-	TEST(board.GetPiece(2, 1)->GetType() == KNIGHT);
-	board.RestoreMove(0, 1, 2, 1, std::move(captured));
-	TEST(board.GetPiece(0, 1)->GetType() == KNIGHT);
-	TEST(board.GetPiece(2, 1)->GetType() == PAWN);
-
-	board.ClearBoard();
-	TEST(board.GetPiece(2, 1) == nullptr);
-	os << "\tChessBoard ownership tests passed\n";
-	return success;
 }

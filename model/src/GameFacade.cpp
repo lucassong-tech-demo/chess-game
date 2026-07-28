@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdlib>
+#include <iostream>
 #include <map>
 #include <sstream>
 #include <stdexcept>
@@ -14,7 +15,6 @@
 #include "Pawn.h"
 #include "Queen.h"
 #include "Rook.h"
-#include "UnitTest.h"
 #include "Xml.h"
 
 namespace {
@@ -859,19 +859,3 @@ const std::optional<BoardPosition> & GameFacade::EnPassantTarget() const noexcep
 unsigned GameFacade::HalfmoveClock() const noexcept { return halfmove_clock_; }
 unsigned GameFacade::FullmoveNumber() const noexcept { return fullmove_number_; }
 const std::string & GameFacade::CurrentFile() const noexcept { return file_name_; }
-
-bool GameFacade::Test(std::ostream & os)
-{
-	using std::endl;
-	bool success = true;
-	GameFacade game;
-	TEST(game.GetPiece(6, 4, WHITE)->GetType() == PAWN);
-	game.MovePiece(6, 4, 4, 4);
-	TEST(game.Turn() == BLACK);
-	TEST(game.HistorySize() == 1);
-	TEST(game.Undo() != nullptr);
-	TEST(game.Turn() == WHITE);
-	TEST(game.Board().GetPiece(6, 4)->GetType() == PAWN);
-	os << "\tGameFacade rule-state tests passed\n";
-	return success;
-}

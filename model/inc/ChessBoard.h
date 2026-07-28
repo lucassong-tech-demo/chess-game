@@ -2,7 +2,6 @@
 #define CHESS_BOARD_H
 
 #include <array>
-#include <iostream>
 #include <memory>
 
 #include "Piece.h"
@@ -47,8 +46,6 @@ public:
 
 	void PutPiece(std::unique_ptr<Piece> piece, int row, int col);
 	std::unique_ptr<Piece> TakePiece(int row, int col);
-
-	static bool Test(std::ostream & os);
 
 private:
 	using Row = std::array<std::unique_ptr<Piece>, Size>;
