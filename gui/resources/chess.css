@@ -17,6 +17,18 @@ window {
   background: #332c29;
 }
 
+.coordinate-grid {
+  background: #332c29;
+}
+
+.coordinate-label {
+  min-width: 24px;
+  min-height: 24px;
+  color: #f5ead8;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .board-cell {
   min-width: 48px;
   min-height: 48px;

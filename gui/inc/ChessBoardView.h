@@ -18,7 +18,8 @@ public:
 private:
 	static constexpr int CellCount = ChessBoard::Size * ChessBoard::Size;
 
-	Gtk::Grid grid_;
+	Gtk::Grid coordinate_grid_;
+	Gtk::Grid board_grid_;
 	std::array<Gtk::Button *, CellCount> cells_{};
 	std::array<Gtk::Picture *, CellCount> pictures_{};
 	sigc::signal<void(int, int)> cell_selected_;
