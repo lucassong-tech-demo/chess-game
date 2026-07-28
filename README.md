@@ -2,12 +2,11 @@
 
 This repository contains a portable C++20 chess core and a GTKmm 4 desktop
 application. The current GUI is built directly in C++ with `Gtk::Application`,
-`Gtk::ApplicationWindow`, and a dynamic 8×8 `Gtk::Grid`; it does not load
-`cs240chess.glade` or use GTK2/libglade APIs.
+`Gtk::ApplicationWindow`, and a dynamic 8×8 `Gtk::Grid`.
 
 ## Architecture
 
-- `model/` and `utils/` form `chess_core` and have no GTK dependency.
+- `model/` forms `chess_core` and has no GTK dependency.
 - `gui/src/ChessSession.cpp` is a display-independent interaction layer. It
   owns `GameFacade` and coordinates selection, explicit promotion, player
   modes, and file-path behavior. Rules and persistent game state stay in the
@@ -16,12 +15,13 @@ application. The current GUI is built directly in C++ with `Gtk::Application`,
   `Gtk::GestureClick`; it does not implement chess rules or copy the board.
 - `ChessWindow` owns application actions, menus, status presentation, and the
   save dialog.
-- CSS and the existing piece PNG files are compiled into a `Gio::Resource`, so
-  the executable can run from any working directory.
+- CSS and the 12 project-owned piece PNGs under `gui/resources/pieces/` are
+  compiled into a `Gio::Resource`, so the executable can run from any working
+  directory. Packaging uses `gui/resources/icons/app-icon.png`.
 
-The historical `controller/`, `view/`, and `cs240chess.glade` files remain in
-the repository for reference only. They are legacy GTK2-era code and are not
-part of any Meson target.
+The retired GTK2/libglade controller and view, Glade layout, and custom
+HTTP/HTML utility stack have been removed. Active source and build paths use
+only the C++20 model and GTKmm 4 GUI.
 
 ## Core ownership model
 
@@ -138,8 +138,19 @@ meson setup build-sanitize \
   -Db_sanitize=address,undefined \
   -Db_lundef=false
 meson compile -C build-sanitize
-meson test -C build-sanitize
+# Linux:
+ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
+UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1 \
+  meson test -C build-sanitize
+# macOS (Apple sanitizer has no LeakSanitizer support):
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 \
+UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1 \
+  meson test -C build-sanitize
 ```
+
+Leak detection is enabled on the Ubuntu 24.04 CI job. The macOS job keeps
+`detect_leaks=0` because Apple's bundled sanitizer runtime does not support
+LeakSanitizer.
 
 All targets use strict compiler warnings with `warning_level=3` and
 `werror=true`. Tests cover piece boundaries, turn enforcement, check filtering,
