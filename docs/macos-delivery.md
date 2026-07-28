@@ -19,10 +19,9 @@ scripts/package-macos.sh --dmg
 ```
 
 The generated icon is derived solely from the tracked
-`view/images/wking.png` project asset. This avoids introducing an untracked
-third-party icon or duplicating the embedded chess-piece/CSS GResource in the
-bundle. The 128-pixel source limits large-icon sharpness and can be replaced
-later by a project-owned high-resolution master.
+`gui/resources/icons/app-icon.png` project asset. This avoids introducing an
+untracked third-party icon. The 128-pixel source limits large-icon sharpness
+and can be replaced later by a project-owned high-resolution master.
 
 ## Developer ID and notarization
 
