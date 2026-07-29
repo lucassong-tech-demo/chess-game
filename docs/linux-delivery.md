@@ -59,7 +59,9 @@ After the automated probe, manually confirm:
 5. Closing and reopening the application succeeds.
 
 The special chess rules are covered by existing tests but are not part of the
-Linux delivery acceptance click-through.
+Linux delivery acceptance click-through. Before v0.1.0 public release, the
+automated suite must cover castling, en passant, every promotion choice,
+threefold repetition, the fifty-move rule, and insufficient material.
 
 ## Build and install a local `.deb`
 
@@ -98,6 +100,8 @@ It installs:
 /usr/share/applications/io.github.chess_game.desktop
 /usr/share/icons/hicolor/128x128/apps/io.github.chess_game.png
 /usr/share/doc/chess-game/copyright
+/usr/share/doc/chess-game/THIRD_PARTY_NOTICES.md
+/usr/share/doc/chess-game/licenses/
 ```
 
 Remove the locally installed package with:
@@ -107,9 +111,11 @@ sudo apt remove chess-game
 ```
 
 The generated `.deb` is an unsigned local/test artifact, not an official
-Debian archive package and not a signed apt repository. Public distribution
-would additionally require maintained Debian source packaging, changelog and
-signing/repository infrastructure.
+Debian archive package and not a signed apt repository. If attached to the
+v0.1.0 GitHub Release, it must be labeled as an unsigned, best-effort Ubuntu
+24.04 / elementary OS 8.1 package. Broader distribution would additionally
+require maintained Debian source packaging, changelog and signing/repository
+infrastructure.
 
 ## Why `.deb` first
 

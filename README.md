@@ -16,8 +16,9 @@ application. The current GUI is built directly in C++ with `Gtk::Application`,
 - `ChessWindow` owns application actions, menus, status presentation, and the
   save dialog.
 - CSS and the 12 project-owned piece PNGs under `gui/resources/pieces/` are
-  compiled into a `Gio::Resource`, so the executable can run from any working
-  directory. Packaging uses `gui/resources/icons/app-icon.png`.
+compiled into a `Gio::Resource`, so the executable can run from any working
+directory. macOS packaging derives its `.icns` from the project-owned
+1024×1024 master at `gui/resources/icons/app-icon-1024.png`.
 
 The retired GTK2/libglade controller and view, Glade layout, and custom
 HTTP/HTML utility stack have been removed. Active source and build paths use
@@ -114,11 +115,24 @@ when it promotes. Common shortcuts are:
 
 ## macOS delivery
 
-On Apple Silicon macOS, create a relocatable, ad-hoc-signed Release app and
-ZIP with `scripts/package-macos.sh`; add `--dmg` to also create a DMG. See
+On Apple Silicon macOS, first build the audited Cairo 1.18.4 dylibs with LZO
+disabled, then create a relocatable, ad-hoc-signed Release app and ZIP:
+
+```sh
+scripts/build-macos-cairo-no-lzo.sh
+scripts/package-macos.sh
+```
+
+Add `--dmg` to the packaging command to also create and verify a DMG. See
 [`docs/macos-delivery.md`](docs/macos-delivery.md) for artifact acceptance,
 Developer ID signing, and notarization steps. Local artifacts are written
-under the Git-ignored `dist/macos/` directory.
+under the Git-ignored `dist/macos/` directory. The dependency build is also
+Git-ignored and does not install or replace Homebrew libraries.
+
+The v0.1.0 macOS target is Apple Silicon with macOS 26.0 or newer. This
+baseline follows the minimum version encoded in the executable and every
+bundled Homebrew library; lowering it requires rebuilding and retesting the
+complete dependency closure against an older SDK.
 
 ## Linux verification and delivery
 
@@ -159,3 +173,11 @@ mate/stalemate, draw rules, every special move and undo, terminal undo, new
 game, XML round trips and legacy compatibility, invalid/unavailable paths,
 atomic failed loads, Save/Save As path behavior, selection clearing, promotion,
 and all player combinations.
+
+## Release information
+
+- [Privacy](docs/privacy.md)
+- [Known limitations](docs/known-limitations.md)
+- [v0.1.0 release notes](docs/release-notes-v0.1.0.md)
+- [v0.1.0 release checklist](docs/release-v0.1.0.md)
+- [Third-party notices](THIRD_PARTY_NOTICES.md)
