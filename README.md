@@ -16,12 +16,17 @@ application. The current GUI is built directly in C++ with `Gtk::Application`,
 - `ChessWindow` owns application actions, menus, status presentation, and the
   save dialog.
 - CSS and the 12 project-owned piece PNGs under `gui/resources/pieces/` are
-  compiled into a `Gio::Resource`, so the executable can run from any working
-  directory. Packaging uses `gui/resources/icons/app-icon.png`.
+compiled into a `Gio::Resource`, so the executable can run from any working
+directory. macOS packaging derives its `.icns` from the project-owned
+1024×1024 master at `gui/resources/icons/app-icon-1024.png`.
 
 The retired GTK2/libglade controller and view, Glade layout, and custom
 HTTP/HTML utility stack have been removed. Active source and build paths use
 only the C++20 model and GTKmm 4 GUI.
+
+The MIT license covers the project-owned code and runtime artwork committed to
+this repository. Unpublished artwork masters and candidates kept outside Git
+are not part of this repository or its distributed license grant.
 
 ## Core ownership model
 
@@ -97,12 +102,13 @@ meson test -C build-gui
 ./build-gui/chess-game
 ```
 
-The application supports legal-move/capture highlighting, explicit promotion
-choice, castling and en passant, undo, new game, complete turn/check/draw
-status, current-file status, four human/computer combinations, Save, Save As,
-Load, quit, and an about dialog. The deliberately simple computer player
-chooses a legal move deterministically and explicitly chooses a queen when it
-promotes. Common shortcuts are:
+The application marks the selected piece with a gold square, ordinary legal
+moves with green squares, and captures with red borders. It also supports explicit
+promotion choice, castling and en passant, undo, new game, complete
+turn/check/draw status, current-file status, four human/computer combinations,
+Save, Save As, Load, quit, and an about dialog. The deliberately simple computer
+player chooses a legal move deterministically and explicitly chooses a queen
+when it promotes. Common shortcuts are:
 
 - New game: `Command-N` on macOS, `Ctrl-N` on Linux
 - Undo: `Command-Z` / `Ctrl-Z`
@@ -113,19 +119,49 @@ promotes. Common shortcuts are:
 
 ## macOS delivery
 
-On Apple Silicon macOS, create a relocatable, ad-hoc-signed Release app and
-ZIP with `scripts/package-macos.sh`; add `--dmg` to also create a DMG. See
+On Apple Silicon macOS, first build the audited Cairo 1.18.4 dylibs with LZO
+disabled, then create a relocatable, ad-hoc-signed Release app and ZIP:
+
+```sh
+scripts/build-macos-cairo-no-lzo.sh
+scripts/package-macos.sh
+```
+
+Add `--dmg` to the packaging command to also create and verify a DMG. See
 [`docs/macos-delivery.md`](docs/macos-delivery.md) for artifact acceptance,
 Developer ID signing, and notarization steps. Local artifacts are written
-under the Git-ignored `dist/macos/` directory.
+under the Git-ignored `dist/macos/` directory. The dependency build is also
+Git-ignored and does not install or replace Homebrew libraries.
+
+The v0.1.0 macOS target is Apple Silicon with macOS 26.0 or newer. This
+baseline follows the minimum version encoded in the executable and every
+bundled Homebrew library; lowering it requires rebuilding and retesting the
+complete dependency closure against an older SDK.
+
+Before public distribution, validate the exact 34-component/46-dylib source
+manifest and create the corresponding-source archive:
+
+```sh
+scripts/prepare-third-party-sources.sh \
+  --app dist/macos/Chess.app
+```
+
+The official App keeps Hardened Runtime Library Validation enabled. See
+[`docs/lgpl-relinking.md`](docs/lgpl-relinking.md) for the separate local
+workflow that lets recipients test an interface-compatible modified LGPL
+dylib without the release owner's Developer ID credentials.
 
 ## Linux verification and delivery
 
 On elementary OS 8.1 / Ubuntu 24.04, run `scripts/verify-linux.sh` for a
 Release build, tests, ELF dependency checks, and a GUI startup probe. Run
-`scripts/package-linux-deb.sh` to create a local Debian package under
-`dist/linux/`. See [`docs/linux-delivery.md`](docs/linux-delivery.md) for
-installation and manual acceptance steps.
+`scripts/package-linux-deb.sh` to create
+`dist/linux/chess-game_0.1.0-1_amd64.deb`. The v0.1.0 GitHub Release scope
+includes this unsigned, best-effort x86_64 package for Ubuntu 24.04 and
+elementary OS 8.1. It is not an official Debian archive or signed apt package,
+and it uses GTKmm/GTK and other shared libraries supplied by the target
+system. See [`docs/linux-delivery.md`](docs/linux-delivery.md) for installation
+and Gate 7 manual acceptance steps.
 
 ## Sanitizers
 
@@ -158,3 +194,12 @@ mate/stalemate, draw rules, every special move and undo, terminal undo, new
 game, XML round trips and legacy compatibility, invalid/unavailable paths,
 atomic failed loads, Save/Save As path behavior, selection clearing, promotion,
 and all player combinations.
+
+## Release information
+
+- [Privacy](docs/privacy.md)
+- [Known limitations](docs/known-limitations.md)
+- [v0.1.0 release notes](docs/release-notes-v0.1.0.md)
+- [v0.1.0 release checklist](docs/release-v0.1.0.md)
+- [Third-party notices](THIRD_PARTY_NOTICES.md)
+- [LGPL sources and local relinking](docs/lgpl-relinking.md)

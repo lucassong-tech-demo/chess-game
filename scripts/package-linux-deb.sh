@@ -118,6 +118,13 @@ install -Dm644 "${source_dir}/gui/resources/icons/app-icon.png" \
   "${staging}/usr/share/icons/hicolor/128x128/apps/io.github.chess_game.png"
 install -Dm644 "${source_dir}/LICENSE" \
   "${staging}/usr/share/doc/${package_name}/copyright"
+install -Dm644 "${source_dir}/THIRD_PARTY_NOTICES.md" \
+  "${staging}/usr/share/doc/${package_name}/THIRD_PARTY_NOTICES.md"
+licenses_dir="${staging}/usr/share/doc/${package_name}/licenses"
+mkdir -p "${licenses_dir}"
+cp -R "${source_dir}/third_party/licenses/." "${licenses_dir}/"
+[[ -f "${licenses_dir}/gtk4/COPYING" ]] ||
+  { echo "error: third-party licenses were not staged" >&2; exit 1; }
 
 desktop_file="${staging}/usr/share/applications/io.github.chess_game.desktop"
 mkdir -p "$(dirname "${desktop_file}")"
@@ -179,6 +186,9 @@ dpkg-deb --extract "${deb}" "${extracted}"
 
 file "${extracted}/usr/bin/chess-game" | grep -q 'ELF 64-bit' ||
   { echo "error: packaged executable is not 64-bit ELF" >&2; exit 1; }
+[[ -s "${extracted}/usr/share/doc/${package_name}/THIRD_PARTY_NOTICES.md" &&
+  -f "${extracted}/usr/share/doc/${package_name}/licenses/gtk4/COPYING" ]] ||
+  { echo "error: packaged third-party notices are missing" >&2; exit 1; }
 if missing="$(ldd "${extracted}/usr/bin/chess-game" | grep 'not found')"; then
   echo "${missing}" >&2
   echo "error: packaged executable has unresolved libraries" >&2

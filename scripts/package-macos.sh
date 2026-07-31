@@ -11,6 +11,7 @@ script_dir="$(cd "$(dirname "$0")" && pwd)"
 source_dir="$(cd "${script_dir}/.." && pwd)"
 build_dir="${source_dir}/build-macos-release"
 output_dir="${source_dir}/dist/macos"
+cairo_override_dir="${source_dir}/build-macos-cairo-no-lzo/overrides"
 build=true
 create_dmg=false
 
@@ -24,6 +25,9 @@ Chess.app, and produce a relocatable ZIP archive.
 Options:
   --build-dir PATH   Meson build directory (default: build-macos-release)
   --output-dir PATH  Artifact directory (default: dist/macos)
+  --cairo-override-dir PATH
+                     LZO-free Cairo dylibs directory
+                     (default: build-macos-cairo-no-lzo/overrides)
   --skip-build       Package an already-built chess-game executable
   --dmg              Also create Chess-<version>-macOS-arm64.dmg
   -h, --help         Show this help
@@ -40,6 +44,12 @@ while [[ $# -gt 0 ]]; do
     --output-dir)
       [[ $# -ge 2 ]] || { echo "error: --output-dir needs a path" >&2; exit 2; }
       output_dir="$2"
+      shift 2
+      ;;
+    --cairo-override-dir)
+      [[ $# -ge 2 ]] ||
+        { echo "error: --cairo-override-dir needs a path" >&2; exit 2; }
+      cairo_override_dir="$2"
       shift 2
       ;;
     --skip-build)
@@ -62,11 +72,56 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-for tool in meson otool install_name_tool codesign ditto sips realpath \
+for tool in meson otool install_name_tool codesign ditto sips iconutil realpath \
   plutil file lipo shasum; do
   command -v "${tool}" >/dev/null ||
     { echo "error: required tool not found: ${tool}" >&2; exit 1; }
 done
+
+normalize_path() {
+  local input="$1"
+  local component
+  local normalized=""
+  local probe
+  local suffix=""
+  local resolved
+  local -a components=()
+  local -a stack=()
+
+  case "${input}" in
+    /*) ;;
+    *) input="${source_dir}/${input}" ;;
+  esac
+
+  IFS='/' read -r -a components <<<"${input}"
+  for component in "${components[@]}"; do
+    case "${component}" in
+      ''|.) ;;
+      ..)
+        if [[ ${#stack[@]} -gt 0 ]]; then
+          unset "stack[${#stack[@]}-1]"
+        fi
+        ;;
+      *) stack+=("${component}") ;;
+    esac
+  done
+  for component in "${stack[@]}"; do
+    normalized="${normalized}/${component}"
+  done
+  [[ -n "${normalized}" ]] || normalized="/"
+
+  probe="${normalized}"
+  while [[ ! -e "${probe}" ]]; do
+    suffix="/$(basename "${probe}")${suffix}"
+    probe="$(dirname "${probe}")"
+  done
+  resolved="$(realpath "${probe}")"
+  printf '%s%s\n' "${resolved}" "${suffix}"
+}
+
+build_dir="$(normalize_path "${build_dir}")"
+output_dir="$(normalize_path "${output_dir}")"
+cairo_override_dir="$(normalize_path "${cairo_override_dir}")"
 
 case "${output_dir}" in
   "${source_dir}"/*) ;;
@@ -75,6 +130,22 @@ case "${output_dir}" in
     exit 1
     ;;
 esac
+
+for cairo_dylib in \
+  libcairo.2.dylib \
+  libcairo-gobject.2.dylib \
+  libcairo-script-interpreter.2.dylib; do
+  cairo_override="${cairo_override_dir}/${cairo_dylib}"
+  [[ -f "${cairo_override}" ]] || {
+    echo "error: LZO-free Cairo override not found: ${cairo_override}" >&2
+    echo "Run scripts/build-macos-cairo-no-lzo.sh first." >&2
+    exit 1
+  }
+  if otool -L "${cairo_override}" | grep -qi 'liblzo'; then
+    echo "error: Cairo override still references LZO: ${cairo_override}" >&2
+    exit 1
+  fi
+done
 
 version="$(sed -n "s/^[[:space:]]*version: '\\([^']*\\)',/\\1/p" \
   "${source_dir}/meson.build" | head -1)"
@@ -137,7 +208,7 @@ cat >"${app}/Contents/Info.plist" <<EOF
   <key>CFBundleIconFile</key>
   <string>Chess.icns</string>
   <key>CFBundleIdentifier</key>
-  <string>io.github.chess-game</string>
+  <string>io.github.lucassong-tech-demo.chess-game</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundleName</key>
@@ -152,6 +223,8 @@ cat >"${app}/Contents/Info.plist" <<EOF
   <string>public.app-category.board-games</string>
   <key>LSMinimumSystemVersion</key>
   <string>${minimum_macos}</string>
+  <key>NSHumanReadableCopyright</key>
+  <string>Copyright © 2026 Lucas Song</string>
   <key>NSHighResolutionCapable</key>
   <true/>
   <key>NSPrincipalClass</key>
@@ -161,8 +234,38 @@ cat >"${app}/Contents/Info.plist" <<EOF
 EOF
 plutil -lint "${app}/Contents/Info.plist"
 
-icon_source="${source_dir}/gui/resources/icons/app-icon.png"
-sips -s format icns "${icon_source}" --out "${resources}/Chess.icns" >/dev/null
+icon_source="${source_dir}/gui/resources/icons/app-icon-1024.png"
+[[ -f "${icon_source}" ]] ||
+  { echo "error: 1024x1024 icon master not found: ${icon_source}" >&2; exit 1; }
+icon_pixels="$(sips -g pixelWidth -g pixelHeight "${icon_source}" |
+  awk '/pixelWidth:/ { width=$2 } /pixelHeight:/ { height=$2 }
+       END { print width "x" height }')"
+[[ "${icon_pixels}" == "1024x1024" ]] ||
+  { echo "error: icon master must be 1024x1024, got: ${icon_pixels}" >&2; exit 1; }
+
+icon_work="$(mktemp -d "${TMPDIR:-/tmp}/chess-icon.XXXXXX")"
+icon_512="${icon_work}/Chess-512.png"
+sips -z 512 512 "${icon_source}" --out "${icon_512}" >/dev/null
+sips -s format icns "${icon_512}" --out "${resources}/Chess.icns" >/dev/null
+iconutil -c iconset "${resources}/Chess.icns" \
+  -o "${icon_work}/Chess-verify.iconset"
+[[ -f "${icon_work}/Chess-verify.iconset/icon_512x512.png" ]] ||
+  { echo "error: generated ICNS lacks its 512x512 representation" >&2; exit 1; }
+rm -rf "${icon_work}"
+
+ditto "${source_dir}/LICENSE" "${resources}/LICENSE.txt"
+ditto "${source_dir}/THIRD_PARTY_NOTICES.md" \
+  "${resources}/THIRD_PARTY_NOTICES.md"
+ditto "${source_dir}/third_party/macos-arm64-v0.1.0-sources.tsv" \
+  "${resources}/THIRD_PARTY_SOURCES.tsv"
+ditto "${source_dir}/docs/lgpl-relinking.md" \
+  "${resources}/LGPL_RELINKING.md"
+ditto "${source_dir}/third_party/licenses" "${resources}/licenses"
+[[ -s "${resources}/THIRD_PARTY_NOTICES.md" &&
+  -s "${resources}/THIRD_PARTY_SOURCES.tsv" &&
+  -s "${resources}/LGPL_RELINKING.md" &&
+  -f "${resources}/licenses/gtk4/COPYING" ]] ||
+  { echo "error: third-party notices were not bundled" >&2; exit 1; }
 
 queue_file="$(mktemp "${TMPDIR:-/tmp}/chess-dylibs.XXXXXX")"
 seen_file="$(mktemp "${TMPDIR:-/tmp}/chess-seen.XXXXXX")"
@@ -208,6 +311,12 @@ while IFS=$'\t' read -r macho original_macho; do
           [[ -f "${dependency_source}" ]] ||
             { echo "error: missing dependency: ${dependency_source}" >&2; exit 1; }
           basename_dep="$(basename "${dependency_source}")"
+          case "${basename_dep}" in
+            libcairo.2.dylib|libcairo-gobject.2.dylib|\
+              libcairo-script-interpreter.2.dylib)
+              dependency_source="${cairo_override_dir}/${basename_dep}"
+              ;;
+          esac
           destination="${frameworks}/${basename_dep}"
           canonical_dependency="$(realpath "${dependency_source}")"
           if [[ -e "${destination}" ]]; then
@@ -229,6 +338,30 @@ while IFS=$'\t' read -r macho original_macho; do
       fi
     done
 done <"${queue_file}"
+
+for cairo_dylib in \
+  libcairo.2.dylib \
+  libcairo-gobject.2.dylib \
+  libcairo-script-interpreter.2.dylib; do
+  recorded_dependency="$(awk -F '\t' -v name="${cairo_dylib}" \
+    '$1 == name { print $2; exit }' "${sources_file}")"
+  expected_dependency="$(realpath "${cairo_override_dir}/${cairo_dylib}")"
+  [[ "${recorded_dependency}" == "${expected_dependency}" ]] || {
+    echo "error: packaged Cairo did not use the LZO-free override: ${cairo_dylib}" >&2
+    exit 1
+  }
+done
+
+if find "${frameworks}" -maxdepth 1 -type f -iname '*lzo*' | grep -q .; then
+  echo "error: LZO library was included in the macOS bundle" >&2
+  exit 1
+fi
+while IFS= read -r macho; do
+  if otool -L "${macho}" | grep -qi 'liblzo'; then
+    echo "error: LZO dependency remains in ${macho}" >&2
+    exit 1
+  fi
+done < <(find "${app}/Contents/MacOS" "${frameworks}" -type f -print)
 
 rewrite_macho() {
   local macho="$1"
@@ -320,12 +453,13 @@ if ${create_dmg}; then
   dmg_root="$(mktemp -d "${TMPDIR:-/tmp}/chess-dmg.XXXXXX")"
   ditto "${app}" "${dmg_root}/Chess.app"
   ln -s /Applications "${dmg_root}/Applications"
-  if ! hdiutil create -quiet -fs HFS+ -volname "Chess ${version}" \
+  if ! hdiutil create -fs HFS+ -volname "Chess ${version}" \
     -srcfolder "${dmg_root}" -format UDZO -ov "${dmg}"; then
     rm -rf "${dmg_root}"
     exit 1
   fi
   rm -rf "${dmg_root}"
+  hdiutil verify "${dmg}"
 fi
 
 echo
