@@ -134,6 +134,19 @@ baseline follows the minimum version encoded in the executable and every
 bundled Homebrew library; lowering it requires rebuilding and retesting the
 complete dependency closure against an older SDK.
 
+Before public distribution, validate the exact 34-component/46-dylib source
+manifest and create the corresponding-source archive:
+
+```sh
+scripts/prepare-third-party-sources.sh \
+  --app dist/macos/Chess.app
+```
+
+The official App keeps Hardened Runtime Library Validation enabled. See
+[`docs/lgpl-relinking.md`](docs/lgpl-relinking.md) for the separate local
+workflow that lets recipients test an interface-compatible modified LGPL
+dylib without the release owner's Developer ID credentials.
+
 ## Linux verification and delivery
 
 On elementary OS 8.1 / Ubuntu 24.04, run `scripts/verify-linux.sh` for a
@@ -181,3 +194,4 @@ and all player combinations.
 - [v0.1.0 release notes](docs/release-notes-v0.1.0.md)
 - [v0.1.0 release checklist](docs/release-v0.1.0.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
+- [LGPL sources and local relinking](docs/lgpl-relinking.md)

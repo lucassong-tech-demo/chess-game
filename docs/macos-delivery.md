@@ -43,8 +43,37 @@ minimum system version, so v0.1.0 must not claim compatibility with an older
 macOS release.
 
 `Contents/Resources` includes the project's MIT license,
-`THIRD_PARTY_NOTICES.md`, and the corresponding upstream license texts. A
-release fails packaging if those notices are absent.
+`THIRD_PARTY_NOTICES.md`, the exact third-party source manifest,
+`LGPL_RELINKING.md`, and the corresponding upstream license texts. A release
+fails packaging if those materials are absent.
+
+## Third-party sources and LGPL relinking
+
+Validate that the source manifest covers the exact App dylib closure:
+
+```sh
+scripts/prepare-third-party-sources.sh \
+  --verify-manifest-only \
+  --app dist/macos/Chess.app
+```
+
+Create the corresponding-source archive for the GitHub Release:
+
+```sh
+scripts/prepare-third-party-sources.sh \
+  --app dist/macos/Chess.app
+```
+
+This downloads and verifies source archives and formula snapshots but installs
+nothing. Publish the resulting
+`Chess-0.1.0-third-party-sources.tar.gz` beside the binary artifacts.
+
+The official Developer ID build keeps Library Validation enabled and does not
+use a Disable Library Validation entitlement. Recipients can test an
+interface-compatible modified LGPL dylib in a separate ad-hoc-signed App copy
+using `scripts/relink-macos-lgpl.sh`. See
+[`lgpl-relinking.md`](lgpl-relinking.md) for the security model and acceptance
+steps.
 
 ## Developer ID and notarization
 
@@ -60,6 +89,10 @@ broad exceptions. Store notarization credentials in a local Keychain profile;
 never put certificate passwords, API keys, or profiles in this repository or
 command output. Apple submission and identity signing are intentionally not
 performed by the packaging script.
+
+The `scripts/lgpl-local-modification.entitlements` file is solely for a
+recipient's locally modified, ad-hoc-signed copy. It must never be passed to
+the formal Developer ID signing path.
 
 Formal signing must proceed from inner dylibs to the outer app using hardened
 runtime and a secure timestamp. Verification must confirm the signing

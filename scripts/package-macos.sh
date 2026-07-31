@@ -256,8 +256,14 @@ rm -rf "${icon_work}"
 ditto "${source_dir}/LICENSE" "${resources}/LICENSE.txt"
 ditto "${source_dir}/THIRD_PARTY_NOTICES.md" \
   "${resources}/THIRD_PARTY_NOTICES.md"
+ditto "${source_dir}/third_party/macos-arm64-v0.1.0-sources.tsv" \
+  "${resources}/THIRD_PARTY_SOURCES.tsv"
+ditto "${source_dir}/docs/lgpl-relinking.md" \
+  "${resources}/LGPL_RELINKING.md"
 ditto "${source_dir}/third_party/licenses" "${resources}/licenses"
 [[ -s "${resources}/THIRD_PARTY_NOTICES.md" &&
+  -s "${resources}/THIRD_PARTY_SOURCES.tsv" &&
+  -s "${resources}/LGPL_RELINKING.md" &&
   -f "${resources}/licenses/gtk4/COPYING" ]] ||
   { echo "error: third-party notices were not bundled" >&2; exit 1; }
 

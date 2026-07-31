@@ -35,6 +35,9 @@ GitHub tokens here.
 | Ubuntu Release, GUI smoke, ASan/UBSan/LeakSanitizer | Pass | Branch GitHub Actions run observed successful by release owner |
 | macOS ad-hoc ZIP/DMG package closure | Pass | Local package before metadata freeze |
 | LZO absent from macOS Mach-O closure and notices | Pass | Cairo 1.18.4 rebuilt with `-Dlzo=disabled`; 46-dylib closure audited |
+| Third-party source manifest covers macOS dylibs | Pass | Machine check exactly matched 34 components to the 46-dylib App closure |
+| Corresponding-source release archive | Pass | 34 sources and 34 formula snapshots verified; archive SHA-256 `83a664c43bbf38cc5c39321438acd46768337458e161773becffc46e6f59c1df` |
+| LGPL local relinking workflow | Partial | Compatible-dylib replacement, runtime ad-hoc signing, entitlement, and strict verification pass; rebuilt modified dylib launch/smoke remains |
 | Final package after metadata/license freeze | Pending | Rebuild required |
 | elementary OS `.deb` install, launch, and uninstall | Pending / optional | Decide before publication |
 
@@ -46,6 +49,8 @@ GitHub tokens here.
 | Developer ID Application identity installed | Pending |
 | Signed nested code from inside out | Pending |
 | Hardened runtime and secure timestamp | Pending |
+| Library Validation enabled in official App | Pending |
+| Disable Library Validation absent from official App | Pending |
 | No `get-task-allow` entitlement | Pending |
 | `codesign --verify --deep --strict` | Pending |
 | Signing authority and Team ID | Pending |
@@ -61,6 +66,7 @@ GitHub tokens here.
 |---|---|---|---|
 | `Chess-0.1.0-macOS-arm64.dmg` | Pending | Pending | Pending |
 | `Chess-0.1.0-macOS-arm64.zip` (optional) | Pending | Pending | Pending |
+| `Chess-0.1.0-third-party-sources.tar.gz` | Pending | Pending | Pending |
 | `SHA256SUMS` | Pending | Pending | Pending |
 | `chess-game_0.1.0-1_amd64.deb` (optional) | Pending | Pending | Pending |
 
