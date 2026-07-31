@@ -47,6 +47,9 @@ build-*/
 # Local release artifacts
 /dist/
 
+# Private artwork masters, candidates, and sales assets
+/artwork/
+
 # CMake generated files
 CMakeFiles/
 CMakeCache.txt

@@ -25,8 +25,11 @@ The macOS artifact targets Apple Silicon and macOS 26.0 or newer. Drag
 artifact must be Developer ID signed, notarized, and stapled before these
 instructions are considered final.
 
-An optional unsigned `.deb` may be provided for Ubuntu 24.04 and elementary
-OS 8.1. Install it with:
+The v0.1.0 GitHub Release also includes
+`chess-game_0.1.0-1_amd64.deb` for x86_64 Ubuntu 24.04 and elementary OS 8.1.
+It is an unsigned, best-effort artifact, not an official Debian archive
+package or signed apt repository. It uses GTKmm/GTK and other runtime
+libraries supplied by the target system. Install it with:
 
 ```sh
 sudo apt install ./chess-game_0.1.0-1_amd64.deb

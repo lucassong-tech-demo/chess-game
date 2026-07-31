@@ -1,7 +1,14 @@
 # Linux verification and Debian delivery
 
 The supported Linux baseline is elementary OS 8.1 / Ubuntu 24.04 with
-GTKmm 4.10 or newer. Install the build and local Debian-package tools:
+GTKmm 4.10 or newer on x86_64. The v0.1.0 release scope includes
+`chess-game_0.1.0-1_amd64.deb` as an unsigned, best-effort GitHub Release
+artifact. It is not an official Debian archive package or a signed apt
+repository. Unlike the macOS app, it does not bundle GTKmm/GTK; apt resolves
+the shared-library dependencies calculated from the executable by
+`dpkg-shlibdeps`.
+
+Install the build and local Debian-package tools:
 
 ```sh
 sudo apt update
@@ -63,7 +70,7 @@ Linux delivery acceptance click-through. Before v0.1.0 public release, the
 automated suite must cover castling, en passant, every promotion choice,
 threefold repetition, the fifty-move rule, and insufficient material.
 
-## Build and install a local `.deb`
+## Build and inspect the v0.1.0 `.deb`
 
 Run:
 
@@ -110,12 +117,65 @@ Remove the locally installed package with:
 sudo apt remove chess-game
 ```
 
-The generated `.deb` is an unsigned local/test artifact, not an official
-Debian archive package and not a signed apt repository. If attached to the
-v0.1.0 GitHub Release, it must be labeled as an unsigned, best-effort Ubuntu
-24.04 / elementary OS 8.1 package. Broader distribution would additionally
-require maintained Debian source packaging, changelog and signing/repository
+The generated `.deb` is the unsigned, best-effort Linux artifact planned for
+the v0.1.0 GitHub Release. It is not an official Debian archive package and
+not a signed apt repository. Broader distribution would additionally require
+maintained Debian source packaging, changelog and signing/repository
 infrastructure.
+
+## Gate 7: elementary OS 8.1 clean-machine acceptance
+
+Do not record this acceptance against a moving development checkout. Run it
+later on the elementary OS 8.1 x86_64 machine, after the release candidate
+commit is frozen and pushed, and first confirm that `git rev-parse HEAD`
+matches the commit recorded in `docs/release-v0.1.0.md`.
+
+From the frozen repository checkout:
+
+```sh
+git status --short
+git rev-parse HEAD
+scripts/verify-linux.sh
+scripts/package-linux-deb.sh
+sha256sum dist/linux/chess-game_0.1.0-1_amd64.deb
+dpkg-deb --info dist/linux/chess-game_0.1.0-1_amd64.deb
+dpkg-deb --contents dist/linux/chess-game_0.1.0-1_amd64.deb
+dpkg-deb -f dist/linux/chess-game_0.1.0-1_amd64.deb \
+  Package Version Architecture Depends
+sudo apt install ./dist/linux/chess-game_0.1.0-1_amd64.deb
+ldd /usr/bin/chess-game
+chess-game
+```
+
+Record the commit and SHA-256, then manually confirm:
+
+1. `git status --short` was empty and the commit matched the frozen candidate.
+2. The package reports `Package: chess-game`, `Version: 0.1.0-1`, and
+   `Architecture: amd64`, and apt resolves all declared dependencies.
+3. `ldd /usr/bin/chess-game` contains no `not found` entry.
+4. Launch succeeds both from the application menu and with `chess-game`.
+5. The complete board, project-owned pieces, selected square, green legal
+   destinations, red-bordered captures, icon, and About information render
+   correctly.
+6. New, ordinary moves, captures, repeated Undo, Save, Save As, Load, and a
+   malformed/missing XML load all behave correctly; a failed load preserves
+   the current game.
+7. Human/Human, Human/Computer, Computer/Human, and Computer/Computer modes
+   all operate.
+8. Closing and reopening the installed application succeeds.
+
+After the functional checks, uninstall and verify that the executable is no
+longer installed:
+
+```sh
+sudo apt remove chess-game
+test ! -e /usr/bin/chess-game
+```
+
+Record the tester, date, distribution version, architecture, GTKmm version,
+package SHA-256, uninstall result, and overall Pass/Fail in
+`docs/release-v0.1.0.md`. These checks cannot be completed or claimed from a
+Mac.
 
 ## Why `.deb` first
 

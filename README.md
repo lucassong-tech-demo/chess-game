@@ -24,6 +24,10 @@ The retired GTK2/libglade controller and view, Glade layout, and custom
 HTTP/HTML utility stack have been removed. Active source and build paths use
 only the C++20 model and GTKmm 4 GUI.
 
+The MIT license covers the project-owned code and runtime artwork committed to
+this repository. Unpublished artwork masters and candidates kept outside Git
+are not part of this repository or its distributed license grant.
+
 ## Core ownership model
 
 `ChessBoard` is the sole owner of live pieces. Its fixed 8×8 grid stores
@@ -151,9 +155,13 @@ dylib without the release owner's Developer ID credentials.
 
 On elementary OS 8.1 / Ubuntu 24.04, run `scripts/verify-linux.sh` for a
 Release build, tests, ELF dependency checks, and a GUI startup probe. Run
-`scripts/package-linux-deb.sh` to create a local Debian package under
-`dist/linux/`. See [`docs/linux-delivery.md`](docs/linux-delivery.md) for
-installation and manual acceptance steps.
+`scripts/package-linux-deb.sh` to create
+`dist/linux/chess-game_0.1.0-1_amd64.deb`. The v0.1.0 GitHub Release scope
+includes this unsigned, best-effort x86_64 package for Ubuntu 24.04 and
+elementary OS 8.1. It is not an official Debian archive or signed apt package,
+and it uses GTKmm/GTK and other shared libraries supplied by the target
+system. See [`docs/linux-delivery.md`](docs/linux-delivery.md) for installation
+and Gate 7 manual acceptance steps.
 
 ## Sanitizers
 
