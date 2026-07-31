@@ -224,7 +224,7 @@ cat >"${app}/Contents/Info.plist" <<EOF
   <key>LSMinimumSystemVersion</key>
   <string>${minimum_macos}</string>
   <key>NSHumanReadableCopyright</key>
-  <string>Copyright © 2026 lucassong-tech-demo</string>
+  <string>Copyright © 2026 Lucas Song</string>
   <key>NSHighResolutionCapable</key>
   <true/>
   <key>NSPrincipalClass</key>

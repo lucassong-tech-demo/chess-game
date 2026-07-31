@@ -13,6 +13,8 @@ GitHub tokens here.
 | Final tag | `v0.1.0` (not created) |
 | Bundle identifier | `io.github.lucassong-tech-demo.chess-game` |
 | Display name / version | Chess / 0.1.0 |
+| Publisher / account type | Lucas Song / Individual |
+| Copyright notice | `Copyright © 2026 Lucas Song` |
 | macOS target | Apple Silicon arm64, macOS 26.0 or newer |
 | Linux target | Ubuntu 24.04 / elementary OS 8.1 |
 
@@ -45,7 +47,7 @@ GitHub tokens here.
 
 | Check | Status / value |
 |---|---|
-| Apple account type and public seller name reviewed | Pending |
+| Apple account type and public name reviewed | Pass — Individual / Lucas Song |
 | Developer ID Application identity installed | Pending |
 | Signed nested code from inside out | Pending |
 | Hardened runtime and secure timestamp | Pending |

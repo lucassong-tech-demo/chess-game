@@ -64,7 +64,14 @@ ChessWindow::ChessWindow(
 	about_dialog_.set_program_name("Chess");
 	about_dialog_.set_version("0.1.0");
 	about_dialog_.set_comments(
-		"A GTKmm 4 interface backed by the portable chess core.");
+		"A local, offline GTKmm 4 chess game.");
+	about_dialog_.set_authors({"Lucas Song"});
+	about_dialog_.set_copyright(
+		"Copyright © 2026 Lucas Song");
+	about_dialog_.set_license_type(Gtk::License::MIT_X11);
+	about_dialog_.set_website(
+		"https://github.com/lucassong-tech-demo/chess-game");
+	about_dialog_.set_website_label("Project website");
 
 	save_dialog_ = Gtk::FileDialog::create();
 	save_dialog_->set_title("Save Game");

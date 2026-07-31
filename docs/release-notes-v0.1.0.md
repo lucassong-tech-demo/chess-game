@@ -3,6 +3,8 @@
 Chess v0.1.0 modernizes the original desktop game as a portable C++20 core
 with a GTKmm 4 interface.
 
+This release is published by Lucas Song as an individual.
+
 ## Highlights
 
 - Complete local chess play with check, checkmate, stalemate, castling,

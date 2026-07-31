@@ -42,6 +42,10 @@ binary and its bundled libraries are arm64 and encode macOS 26.0 as their
 minimum system version, so v0.1.0 must not claim compatibility with an older
 macOS release.
 
+Chess v0.1.0 is published by Lucas Song as an individual. The
+`lucassong-tech-demo` text in the bundle identifier and GitHub URL is a stable
+repository namespace, not a company, organization, or copyright holder.
+
 `Contents/Resources` includes the project's MIT license,
 `THIRD_PARTY_NOTICES.md`, the exact third-party source manifest,
 `LGPL_RELINKING.md`, and the corresponding upstream license texts. A release
