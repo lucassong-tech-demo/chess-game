@@ -16,7 +16,9 @@ GitHub tokens here.
 | Publisher / account type | Lucas Song / Individual |
 | Copyright notice | `Copyright © 2026 Lucas Song` |
 | macOS target | Apple Silicon arm64, macOS 26.0 or newer |
-| Linux target | Ubuntu 24.04 / elementary OS 8.1 |
+| Frozen v0.1.0 platform scope | macOS Apple Silicon package plus Linux x86_64 `.deb` |
+| Linux target | elementary OS 8.1 / Ubuntu 24.04, x86_64 |
+| Linux artifact | `chess-game_0.1.0-1_amd64.deb`; unsigned, best-effort GitHub Release asset |
 
 ## Quality gates
 
@@ -35,13 +37,22 @@ GitHub tokens here.
 | macOS Release core/session/GUI build and tests | Pass | Local build |
 | macOS ASan/UBSan | Pass | Local build; LeakSanitizer unavailable in Apple runtime |
 | Ubuntu Release, GUI smoke, ASan/UBSan/LeakSanitizer | Pass | Branch GitHub Actions run observed successful by release owner |
+| About, project license, and macOS copyright identity | Pass | Individual publisher and public copyright name consistently set to Lucas Song |
+| Linux v0.1.0 release-scope decision | Pass | x86_64 `.deb` will ship with the macOS Apple Silicon package |
+| Private artwork isolation | Pass | Root `/artwork/` is untracked and ignored; only committed runtime pieces and app icons are released |
 | macOS ad-hoc ZIP/DMG package closure | Pass | Local package before metadata freeze |
 | LZO absent from macOS Mach-O closure and notices | Pass | Cairo 1.18.4 rebuilt with `-Dlzo=disabled`; 46-dylib closure audited |
 | Third-party source manifest covers macOS dylibs | Pass | Machine check exactly matched 34 components to the 46-dylib App closure |
 | Corresponding-source release archive | Pass | 34 sources and 34 formula snapshots verified; archive SHA-256 `83a664c43bbf38cc5c39321438acd46768337458e161773becffc46e6f59c1df` |
-| LGPL local relinking workflow | Partial | Compatible-dylib replacement, runtime ad-hoc signing, entitlement, and strict verification pass; rebuilt modified dylib launch/smoke remains |
+| LGPL local relinking workflow | Pass | FriBidi 1.0.16 rebuilt from verified archived source; arm64 ABI, hashes, dependency closure, runtime ad-hoc signature, entitlement, actual loaded path, and strict verification passed; user completed board/New/move/Undo/Save/Load GUI acceptance on 2026-07-31 |
 | Final package after metadata/license freeze | Pending | Rebuild required |
-| elementary OS `.deb` install, launch, and uninstall | Pending / optional | Decide before publication |
+| elementary OS `.deb` build, install, launch, function, uninstall, and SHA-256 | Pending / Gate 7 | Must run on the elementary OS 8.1 x86_64 machine after candidate freeze and push |
+
+The Linux release-scope decision and private-artwork isolation are complete.
+The rebuilt LGPL-dylib relink smoke test is also complete. With this checklist
+commit, the Gate 2 release identity, scope, compliance materials, and metadata
+are frozen. The post-freeze ad-hoc package rebuild remains pending and is not
+Developer ID, notarization, Gatekeeper, or public-release evidence.
 
 ## Identity, signing, and notarization
 
@@ -70,7 +81,7 @@ GitHub tokens here.
 | `Chess-0.1.0-macOS-arm64.zip` (optional) | Pending | Pending | Pending |
 | `Chess-0.1.0-third-party-sources.tar.gz` | Pending | Pending | Pending |
 | `SHA256SUMS` | Pending | Pending | Pending |
-| `chess-game_0.1.0-1_amd64.deb` (optional) | Pending | Pending | Pending |
+| `chess-game_0.1.0-1_amd64.deb` | Pending | Pending | Pending Gate 7 acceptance |
 
 ## Clean-environment acceptance
 
@@ -94,6 +105,36 @@ GitHub tokens here.
 | Downloaded artifact | Pending |
 | Overall result | Pending |
 | Notes | Pending |
+
+## Gate 7 Linux clean-environment acceptance
+
+Run the exact build, inspection, installation, functional, and uninstall
+commands in `docs/linux-delivery.md` on an elementary OS 8.1 x86_64 machine
+after the candidate commit is frozen and pushed. Do not mark this section Pass
+from macOS.
+
+- [ ] Record the frozen candidate commit before building.
+- [ ] Build and verify `chess-game_0.1.0-1_amd64.deb` on the target machine.
+- [ ] Record its SHA-256 and package metadata.
+- [ ] Confirm apt resolves its system GTKmm/GTK and other shared-library
+      dependencies.
+- [ ] Install and launch from both the application menu and terminal.
+- [ ] Complete the board/resource, game-flow, save/load/error, and four-mode
+      checks in `docs/linux-delivery.md`.
+- [ ] Uninstall and confirm `/usr/bin/chess-game` is absent.
+
+| Field | Result |
+|---|---|
+| Frozen commit | Pending |
+| Tester / date | Pending |
+| Distribution | elementary OS 8.1 |
+| Architecture | x86_64 |
+| GTKmm version | Pending |
+| `.deb` SHA-256 | Pending |
+| Build / install / launch | Pending |
+| Functional checks | Pending |
+| Uninstall | Pending |
+| Overall result / notes | Pending |
 
 ## Publication
 
