@@ -135,7 +135,7 @@ void TestPromotionWorkflow()
 	}, WHITE, {false, false, false, false});
 	setup.SaveAs(setup_path.string());
 
-	ChessSession session;
+	ChessSession session(0);
 	session.Load(setup_path.string());
 	session.SelectCell(1, 0);
 	Check(
@@ -238,6 +238,40 @@ void TestComputerModes()
 	Check(session.AdvanceComputer(), "computer-vs-computer black advances");
 }
 
+void TestBeginnerComputerRandomizesPieceChoice()
+{
+	std::set<BoardPosition> opening_sources;
+	for (std::uint32_t seed = 0; seed < 32; ++seed) {
+		ChessSession session(seed);
+		session.SetPlayers(
+			ChessSession::PlayerKind::Computer,
+			ChessSession::PlayerKind::Human);
+		Check(session.AdvanceComputer(), "seeded Beginner computer moves");
+
+		int moved_sources = 0;
+		for (int row = 6; row < ChessBoard::Size; ++row) {
+			for (int col = 0; col < ChessBoard::Size; ++col) {
+				if (session.Board().GetPiece(row, col) != nullptr) {
+					continue;
+				}
+				++moved_sources;
+				opening_sources.emplace(row, col);
+
+				const int destination_row = row == 6 ? 4 : 5;
+				const int destination_col = row == 6 ? col : col == 1 ? 0 : 5;
+				const Piece * destination =
+					session.Board().GetPiece(destination_row, destination_col);
+				Check(destination && destination->GetColor() == WHITE,
+					"Beginner computer uses the chosen piece's first ordered move");
+			}
+		}
+		Check(moved_sources == 1, "Beginner computer moves exactly one piece");
+	}
+
+	Check(opening_sources.size() > 1,
+		"Beginner computer randomly selects among movable pieces");
+}
+
 void TestModeSwitchContinuousPromotionUndo()
 {
 	const auto setup_path = TempPath("computer-promotion-undo.xml");
@@ -249,7 +283,7 @@ void TestModeSwitchContinuousPromotionUndo()
 	}, WHITE, {false, false, false, false});
 	setup.SaveAs(setup_path.string());
 
-	ChessSession session;
+	ChessSession session(0);
 	session.Load(setup_path.string());
 	session.SetPlayers(
 		ChessSession::PlayerKind::Computer,
@@ -296,6 +330,7 @@ int main()
 	TestPromotionWorkflow();
 	TestSaveLoadPathSemantics();
 	TestComputerModes();
+	TestBeginnerComputerRandomizesPieceChoice();
 	TestModeSwitchContinuousPromotionUndo();
 
 	if (failures != 0) {
