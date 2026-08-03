@@ -1,7 +1,9 @@
 #ifndef CHESS_SESSION_H
 #define CHESS_SESSION_H
 
+#include <cstdint>
 #include <optional>
+#include <random>
 #include <set>
 #include <string>
 
@@ -23,6 +25,7 @@ public:
 	};
 
 	ChessSession();
+	explicit ChessSession(std::uint32_t random_seed);
 
 	void NewGame();
 	Interaction SelectCell(int row, int col);
@@ -54,6 +57,11 @@ private:
 		int destination_row;
 		int destination_col;
 	};
+	struct ComputerMove
+	{
+		BoardPosition source;
+		BoardPosition destination;
+	};
 
 	GameFacade game_;
 	std::optional<BoardPosition> selected_;
@@ -62,11 +70,13 @@ private:
 	std::string status_;
 	PlayerKind white_player_ = PlayerKind::Human;
 	PlayerKind black_player_ = PlayerKind::Human;
+	std::mt19937 random_;
 
 	void SelectPiece(int row, int col);
 	void ClearSelection();
 	void RefreshStatus(const std::string & prefix = {});
 	void CompleteMove(const PendingMove & move, std::optional<PieceType> promotion);
+	std::optional<ComputerMove> ChooseBeginnerMove();
 };
 
 #endif

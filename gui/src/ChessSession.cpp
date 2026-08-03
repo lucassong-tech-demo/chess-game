@@ -1,6 +1,8 @@
 #include "ChessSession.h"
 
+#include <random>
 #include <stdexcept>
+#include <vector>
 
 namespace {
 
@@ -35,6 +37,12 @@ bool IsPromotionSquare(const Piece & piece, int row)
 } // namespace
 
 ChessSession::ChessSession()
+	: ChessSession(std::random_device{}())
+{
+}
+
+ChessSession::ChessSession(std::uint32_t random_seed)
+	: random_(random_seed)
 {
 	NewGame();
 }
@@ -161,6 +169,30 @@ bool ChessSession::AdvanceComputer()
 	if (game_.IsGameOver() || PlayerFor(game_.Turn()) != PlayerKind::Computer) {
 		return false;
 	}
+	const std::optional<ComputerMove> move = ChooseBeginnerMove();
+	if (!move) {
+		RefreshStatus();
+		return false;
+	}
+
+	const Piece * piece = game_.Board().GetPiece(
+		move->source.GetRow(), move->source.GetColumn());
+	const std::optional<PieceType> promotion =
+		piece && IsPromotionSquare(*piece, move->destination.GetRow())
+		? std::optional<PieceType>(QUEEN) : std::nullopt;
+	game_.MovePiece(
+		move->source.GetRow(),
+		move->source.GetColumn(),
+		move->destination.GetRow(),
+		move->destination.GetColumn(),
+		promotion);
+	RefreshStatus("Computer moved");
+	return true;
+}
+
+std::optional<ChessSession::ComputerMove> ChessSession::ChooseBeginnerMove()
+{
+	std::vector<ComputerMove> choices;
 	for (int row = 0; row < ChessBoard::Size; ++row) {
 		for (int col = 0; col < ChessBoard::Size; ++col) {
 			const Piece * piece = game_.Board().GetPiece(row, col);
@@ -171,22 +203,18 @@ bool ChessSession::AdvanceComputer()
 			if (moves.empty()) {
 				continue;
 			}
-			const BoardPosition destination = *moves.begin();
-			const std::optional<PieceType> promotion =
-				IsPromotionSquare(*piece, destination.GetRow())
-				? std::optional<PieceType>(QUEEN) : std::nullopt;
-			game_.MovePiece(
-				row,
-				col,
-				destination.GetRow(),
-				destination.GetColumn(),
-				promotion);
-			RefreshStatus("Computer moved");
-			return true;
+			// Preserve the 2010 Beginner strategy: choose a random movable
+			// piece, then use that piece's first coordinate-ordered move.
+			choices.push_back({BoardPosition(row, col), *moves.begin()});
 		}
 	}
-	RefreshStatus();
-	return false;
+
+	if (choices.empty()) {
+		return std::nullopt;
+	}
+	const std::size_t choice =
+		static_cast<std::size_t>(random_()) % choices.size();
+	return choices[choice];
 }
 
 const ChessBoard & ChessSession::Board() const { return game_.Board(); }
